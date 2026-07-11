@@ -1,0 +1,25 @@
+plugins = []
+headers = []
+redirects = []
+
+[functions]
+
+[functions."*"]
+
+[build]
+publish = "C:\\Users\\seran\\Dropbox\\INVINCEABLE MAIN 2023\\SILICON BEACH DIGITAL LLC\\Vincent Serano-INVINCEABLE\\Resources\\Vincent Serano\\Products\\Tsunami\\files"
+publishOrigin = "default"
+
+[build.environment]
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
