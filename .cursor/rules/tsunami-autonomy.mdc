@@ -1,0 +1,27 @@
+---
+description: Autonomous ship loop for Tsunami — fix, commit, push without waiting
+alwaysApply: true
+---
+
+# Tsunami — ship without waiting on the user
+
+Owner wants hands-off ops. Do not ask for permission for routine ship steps.
+
+## Do automatically
+
+- Fix bugs and paywall/auth issues you find or are assigned.
+- **Commit** finished work with a clear message (no secrets).
+- **Push `main`** to `origin` (`MediaNinjas/tsunamisystem`) so Netlify auto-deploys.
+- Prefer completing the full loop (fix → verify mentally → commit → push) in one turn.
+- Report the live URL and what changed after push — do not ask “want me to push?”
+
+## Still stop and ask (or skip)
+
+- Force-push, hard reset, or rewriting published history.
+- Committing secrets (`.env`, service role keys, API keys in docs).
+- Destructive DB: `DROP TABLE`, truncates, mass unlock resets.
+- Rotating live Stripe/Supabase/Netlify secrets (dashboard-only).
+
+## Deploy truth
+
+Netlify publishes from GitHub `main`. Pushing `main` **is** the deploy.
