@@ -390,6 +390,8 @@ input[type="date"] { color-scheme: dark; }
     </div>
   </div>
     </div>
+  </div>
+  </div><!-- /page-header -->
 
   <div id="settings-modal" style="display:none;position:fixed;inset:0;z-index:9997;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
     <div class="auth-box" style="max-width:420px;">
@@ -468,9 +470,6 @@ input[type="date"] { color-scheme: dark; }
       </div>
     </div>
   </div>
-  </div>
-</div>
-
 
 <div class="sort-bar" style="position:relative;margin-top:60px;">
   <div id="sort-by-label" style="position:absolute;top:-18px;left:0;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.25em;color:#999;text-transform:uppercase;">Sort By</div>
@@ -525,11 +524,14 @@ input[type="date"] { color-scheme: dark; }
   <button class="ledger-add-btn" onclick="addCard()">+ ADD CARD</button>
 </div>
 
+</div><!-- /app-content -->
+
 <script>
 // ── SUPABASE AUTH ──────────────────────────────────────────
 
 var currentUser = null;
 var authTab = 'signin';
+var TSUNAMI_SITE_URL = 'https://tsunamisystem.netlify.app';
 
 function switchTab(tab) {
   authTab = tab;
@@ -678,7 +680,7 @@ async function signInWithGoogle() {
   const { error } = await _supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: 'https://tsunamiapp.medianinjas.tv'
+      redirectTo: TSUNAMI_SITE_URL
     }
   });
   if (error) setAuthMsg(error.message, 'error');
@@ -1021,7 +1023,41 @@ async function signOut() {
 
 async function checkUnlocked(user) {
   var { data } = await _supabase.from('profiles').select('unlocked').eq('id', user.id).single();
-  return data && data.unlocked;
+  return !!(data && data.unlocked);
+}
+
+function showCodeScreen() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('code-screen').style.display = 'flex';
+  var appContent = document.getElementById('app-content');
+  if (appContent) appContent.style.display = 'none';
+  setTimeout(initPaypalButton, 100);
+}
+
+async function routeAfterSignIn(user) {
+  currentUser = user;
+  var unlocked = await checkUnlocked(user);
+  if (unlocked) {
+    launchApp();
+  } else {
+    showCodeScreen();
+  }
+}
+
+async function pollUnlockAfterStripe(user) {
+  showCodeScreen();
+  setCodeMsg('Payment received - checking your account...', '');
+  var tries = 0;
+  var poll = setInterval(async function() {
+    tries++;
+    if (await checkUnlocked(user)) {
+      clearInterval(poll);
+      launchApp();
+    } else if (tries >= 12) {
+      clearInterval(poll);
+      setCodeMsg('Payment received, but unlock is taking longer than expected. Try refreshing in a minute.', '');
+    }
+  }, 1500);
 }
 
 async function launchApp() {
@@ -1100,25 +1136,9 @@ window.addEventListener('load', async function() {
   // Handle return from Stripe Checkout. The webhook (server-side) is what actually
   // unlocks the account - this just re-checks status once the user is back, since
   // the webhook may land a moment before or after this page reloads.
-  if (window.location.search.includes('stripe_success=1')) {
-    window.history.replaceState({}, document.title, window.location.pathname);
-    if (currentUser) {
-      setCodeMsg('Payment received - checking your account...', '');
-      var tries = 0;
-      var poll = setInterval(async function() {
-        tries++;
-        var unlocked = await checkUnlocked(currentUser);
-        if (unlocked) {
-          clearInterval(poll);
-          launchApp();
-        } else if (tries >= 8) {
-          clearInterval(poll);
-          setCodeMsg('Payment received, but unlock is taking longer than expected. Try refreshing in a minute.', '');
-        }
-      }, 1500);
-    }
-  }
-  if (window.location.search.includes('stripe_cancel=1')) {
+  var stripeReturn = window.location.search.includes('stripe_success=1');
+  var stripeCancel = window.location.search.includes('stripe_cancel=1');
+  if (stripeReturn || stripeCancel) {
     window.history.replaceState({}, document.title, window.location.pathname);
   }
   // Handle Dropbox OAuth callback (distinct from Supabase's own OAuth hash below)
@@ -1134,47 +1154,38 @@ window.addEventListener('load', async function() {
   if (window.location.hash && window.location.hash.includes('access_token')) {
     const { data, error } = await _supabase.auth.getSession();
     if (data && data.session) {
-      currentUser = data.session.user;
-      // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
-      var unlocked = await checkUnlocked(currentUser);
-      if (unlocked) {
-        launchApp();
-      } else {
-        document.getElementById('auth-screen').style.display = 'none';
-        document.getElementById('code-screen').style.display = 'flex';
-        setTimeout(initPaypalButton, 100);
-      }
+      await routeAfterSignIn(data.session.user);
       return;
     }
   }
-  // Regular session check
+  // Regular session check (also handles Stripe return after session is available)
   const { data: { session } } = await _supabase.auth.getSession();
   if (session && session.user) {
-    currentUser = session.user;
-    var unlocked = await checkUnlocked(session.user);
-    if (unlocked) {
-      launchApp();
+    if (stripeReturn) {
+      currentUser = session.user;
+      var alreadyUnlocked = await checkUnlocked(session.user);
+      if (alreadyUnlocked) {
+        launchApp();
+      } else {
+        await pollUnlockAfterStripe(session.user);
+      }
+    } else if (stripeCancel) {
+      await routeAfterSignIn(session.user);
     } else {
-      document.getElementById('auth-screen').style.display = 'none';
-      document.getElementById('code-screen').style.display = 'flex';
-        setTimeout(initPaypalButton, 100);
+      await routeAfterSignIn(session.user);
     }
+  } else if (stripeReturn || stripeCancel) {
+    document.getElementById('auth-screen').style.display = 'flex';
+    setAuthMsg('Sign in to finish activating your purchase.', 'error');
   }
 });
 
-// Listen for auth state changes
+// Listen for auth state changes (fresh sign-in only — load handler owns bootstrap)
 _supabase.auth.onAuthStateChange(async function(event, session) {
+  if (event === 'INITIAL_SESSION') return;
   if (session && session.user) {
-    currentUser = session.user;
-    var unlocked = await checkUnlocked(session.user);
-    if (unlocked) {
-      launchApp();
-    } else {
-      document.getElementById('auth-screen').style.display = 'none';
-      document.getElementById('code-screen').style.display = 'flex';
-        setTimeout(initPaypalButton, 100);
-    }
+    await routeAfterSignIn(session.user);
   } else {
     currentUser = null;
     document.getElementById('auth-screen').style.display = 'flex';
@@ -2504,6 +2515,5 @@ if(lowestBtn) {
 // render();
 // setTimeout(function(){ checkAllPromos(); }, 100);
 </script>
-</div>
 
 </body></html>
