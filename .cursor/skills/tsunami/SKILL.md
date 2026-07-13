@@ -16,7 +16,7 @@ description: >-
 | **NOT** | Starship Phoenix Autoposter (different project) |
 | **Repo** | `https://github.com/MediaNinjas/tsunamisystem.git` |
 | **Live URL** | `https://tsunamisystem.netlify.app` (primary; Netlify deploy) |
-| **Custom domain** | `tsunamiapp.medianinjas.tv` — SSL issues reported; code still references it in places |
+| **Not Tsunami** | `medianinjas.tv` / AV sites — separate product; never use for Stripe/OAuth redirects |
 | **Supabase** | Project ref `fxrhddcexwklyfzzgnvz` |
 
 ## Architecture
@@ -56,7 +56,7 @@ description: >-
 
 2. **`plannerState` not persisted** — Payment planner slots live in memory only. `saveCards()` persists `cards` array, not `plannerState`. Committed payments update balance (saved); slot refs/dates/commits are lost on refresh.
 
-3. **OAuth redirect mismatch** — `signInWithGoogle()` uses `redirectTo: https://tsunamiapp.medianinjas.tv` while `SITE_URL` / live site is `https://tsunamisystem.netlify.app`. Align these.
+3. **OAuth / Stripe URLs** — must be `https://tsunamisystem.netlify.app` only. Never `medianinjas.tv` (unrelated AV site).
 
 4. **EmailJS dead code** — `emailjs` initialized in `<head>`; CSV backup uses `/.netlify/functions/send-backup` instead.
 

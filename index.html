@@ -1045,14 +1045,19 @@ async function routeAfterSignIn(user) {
 }
 
 async function pollUnlockAfterStripe(user) {
+  // Prefer opening the app ASAP — avoid sitting on the paywall after a paid session.
+  if (await checkUnlocked(user)) {
+    await launchApp({ forceCards: true });
+    return;
+  }
   showCodeScreen();
-  setCodeMsg('Payment received - checking your account...', '');
+  setCodeMsg('Payment received - unlocking your card view...', '');
   var tries = 0;
   var poll = setInterval(async function() {
     tries++;
     if (await checkUnlocked(user)) {
       clearInterval(poll);
-      launchApp();
+      await launchApp({ forceCards: true });
     } else if (tries >= 12) {
       clearInterval(poll);
       setCodeMsg('Payment received, but unlock is taking longer than expected. Try refreshing in a minute.', '');
@@ -1060,7 +1065,22 @@ async function pollUnlockAfterStripe(user) {
   }, 1500);
 }
 
-async function launchApp() {
+function showCardsView() {
+  currentView = 'cards';
+  var grid = document.getElementById('grid');
+  var ledger = document.getElementById('ledger-view');
+  var btn = document.getElementById('view-toggle-btn');
+  var sb = document.querySelector('.sort-bar');
+  var sumbar = document.querySelector('.summary-bar');
+  if (grid) grid.style.display = '';
+  if (ledger) ledger.style.display = 'none';
+  if (btn) btn.textContent = '\u2630 LEDGER';
+  if (sb) sb.style.visibility = 'visible';
+  if (sumbar) sumbar.style.visibility = 'visible';
+}
+
+async function launchApp(opts) {
+  opts = opts || {};
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('code-screen').style.display = 'none';
   // Show Google avatar in account button if available
@@ -1071,9 +1091,10 @@ async function launchApp() {
       btn.innerHTML = '<img src="'+avatar+'" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;"> ACCOUNT';
     }
   }
-  // Show app content and account button
+  // Show app content and account button — default surface is the card grid
   var appContent = document.getElementById('app-content');
   if (appContent) appContent.style.display = 'block';
+  showCardsView();
   setTimeout(function(){
     var acctWrap = document.getElementById('acct-wrap');
     if (acctWrap) acctWrap.style.display = 'inline-block';
@@ -1083,6 +1104,7 @@ async function launchApp() {
   await loadCardsFromCloud();
   render();
   setTimeout(function(){ checkAllPromos(); }, 100);
+  showCardsView();
 }
 
 async function loadCardsFromCloud() {
@@ -1138,7 +1160,8 @@ window.addEventListener('load', async function() {
   // the webhook may land a moment before or after this page reloads.
   var stripeReturn = window.location.search.includes('stripe_success=1');
   var stripeCancel = window.location.search.includes('stripe_cancel=1');
-  if (stripeReturn || stripeCancel) {
+  var wantCardsView = stripeReturn || window.location.hash === '#cards';
+  if (stripeReturn || stripeCancel || window.location.hash === '#cards') {
     window.history.replaceState({}, document.title, window.location.pathname);
   }
   // Handle Dropbox OAuth callback (distinct from Supabase's own OAuth hash below)
@@ -1166,12 +1189,17 @@ window.addEventListener('load', async function() {
       currentUser = session.user;
       var alreadyUnlocked = await checkUnlocked(session.user);
       if (alreadyUnlocked) {
-        launchApp();
+        await launchApp({ forceCards: true });
       } else {
         await pollUnlockAfterStripe(session.user);
       }
     } else if (stripeCancel) {
       await routeAfterSignIn(session.user);
+    } else if (wantCardsView) {
+      await routeAfterSignIn(session.user);
+      if (currentUser && await checkUnlocked(currentUser)) {
+        showCardsView();
+      }
     } else {
       await routeAfterSignIn(session.user);
     }

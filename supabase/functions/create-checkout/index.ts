@@ -12,7 +12,8 @@
 //   STRIPE_SECRET_KEY   - your Stripe secret key (starts with sk_)
 //   TSUNAMI_PRICE_ID    - the Stripe Price ID for the one-time product
 //                         (create this in Stripe Dashboard -> Product catalog -> Add product)
-//   SITE_URL            - https://tsunamiapp.medianinjas.tv (no trailing slash)
+//   SITE_URL            - https://tsunamisystem.netlify.app (no trailing slash)
+//                         DO NOT use medianinjas.tv — that is a separate AV site.
 
 import Stripe from "npm:stripe@17";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -20,6 +21,23 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
   apiVersion: "2024-11-20.acacia",
 });
+
+// Canonical Tsunami app URL. Never fall back to medianinjas.tv (unrelated product).
+const TSUNAMI_DEFAULT_SITE_URL = "https://tsunamisystem.netlify.app";
+const ALLOWED_SITE_ORIGINS = new Set([
+  "https://tsunamisystem.netlify.app",
+]);
+
+function resolveSiteUrl(raw: string | undefined): string {
+  const candidate = (raw || "").trim().replace(/\/$/, "");
+  if (candidate && ALLOWED_SITE_ORIGINS.has(candidate)) return candidate;
+  if (candidate && !ALLOWED_SITE_ORIGINS.has(candidate)) {
+    console.warn(
+      `SITE_URL "${candidate}" is not an allowed Tsunami origin; using ${TSUNAMI_DEFAULT_SITE_URL}`
+    );
+  }
+  return TSUNAMI_DEFAULT_SITE_URL;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,7 +73,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const siteUrl = Deno.env.get("SITE_URL")!;
+    const siteUrl = resolveSiteUrl(Deno.env.get("SITE_URL"));
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -71,8 +89,8 @@ Deno.serve(async (req) => {
       // Pass the user's id through so the webhook knows who paid
       client_reference_id: user.id,
       customer_email: user.email,
-      success_url: `${siteUrl}?stripe_success=1`,
-      cancel_url: `${siteUrl}?stripe_cancel=1`,
+      success_url: `${siteUrl}/?stripe_success=1#cards`,
+      cancel_url: `${siteUrl}/?stripe_cancel=1`,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
