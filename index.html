@@ -143,6 +143,14 @@ input.tright.dark-input:focus { background:rgba(255,255,255,0.2); border-color:r
 .settings-acc-sub[open] > summary .settings-acc-meta { display:none; }
 .settings-acc-sub > .settings-acc-body { padding:0 12px 12px; display:flex; flex-direction:column; gap:10px; overflow:visible; }
 #settings-admin-section { margin-top:8px; flex-shrink:0; width:100%; }
+.settings-acc-sub .settings-acc-sub {
+  background:rgba(0,0,0,0.28);
+  border-color:rgba(255,255,255,0.1);
+}
+.settings-acc-sub .settings-acc-sub .settings-acc-label {
+  font-size:12px;
+  letter-spacing:0.1em;
+}
 #settings-modal {
   overflow-y:auto; align-items:flex-start; -webkit-overflow-scrolling:touch;
 }
@@ -629,7 +637,7 @@ input[type="date"] { color-scheme: dark; }
               <span class="settings-acc-label">ADMIN</span>
               <span class="settings-acc-chevron">›</span>
             </div>
-            <div class="settings-acc-meta" id="acc-sum-admin">codes · affiliates · payouts</div>
+            <div class="settings-acc-meta" id="acc-sum-admin">codes · affiliate center</div>
           </summary>
           <div class="settings-acc-body">
             <div class="settings-acc-panel">
@@ -668,99 +676,110 @@ input[type="date"] { color-scheme: dark; }
                 </div>
               </details>
 
-              <details class="settings-acc-sub">
+              <details class="settings-acc-sub" id="acc-admin-affiliate-center">
                 <summary>
                   <div class="settings-acc-head">
-                    <span class="settings-acc-label">RATES</span>
+                    <span class="settings-acc-label">AFFILIATE CENTER</span>
                     <span class="settings-acc-chevron">›</span>
                   </div>
-                  <div class="settings-acc-meta" id="acc-sum-aff-rates">standard · apply to all</div>
+                  <div class="settings-acc-meta" id="acc-sum-aff-center">rates · apps · payouts · statements</div>
                 </summary>
                 <div class="settings-acc-body">
-                  <div style="color:#ccc;font-size:12px;line-height:1.4;">Save the standard for new approvals. Apply to all rewrites every locked rate.</div>
-                  <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
-                    <div style="flex:1;min-width:140px;">
-                      <div style="font-size:10px;color:#fff;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;font-weight:600;">Standard commission ($)</div>
-                      <input id="admin-aff-default-commission" type="text" inputmode="decimal" placeholder="5" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:#fff;padding:10px 12px;font-size:16px;font-family:ui-monospace,Menlo,Consolas,monospace;">
+                  <details class="settings-acc-sub">
+                    <summary>
+                      <div class="settings-acc-head">
+                        <span class="settings-acc-label">RATES</span>
+                        <span class="settings-acc-chevron">›</span>
+                      </div>
+                      <div class="settings-acc-meta" id="acc-sum-aff-rates">standard · apply to all</div>
+                    </summary>
+                    <div class="settings-acc-body">
+                      <div style="color:#ccc;font-size:12px;line-height:1.4;">Save the standard for new approvals. Apply to all rewrites every locked rate.</div>
+                      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+                        <div style="flex:1;min-width:140px;">
+                          <div style="font-size:10px;color:#fff;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;font-weight:600;">Standard commission ($)</div>
+                          <input id="admin-aff-default-commission" type="text" inputmode="decimal" placeholder="5" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:#fff;padding:10px 12px;font-size:16px;font-family:ui-monospace,Menlo,Consolas,monospace;">
+                        </div>
+                        <button class="acct-menu-item" style="padding:10px 14px;font-size:12px;white-space:nowrap;" onclick="saveAdminAffiliateDefaultCommission()">Save rate</button>
+                        <button class="acct-menu-item" style="padding:10px 14px;font-size:12px;white-space:nowrap;color:#33cc66;border-color:rgba(51,204,102,0.45);" onclick="applyStandardCommissionToAll()">Apply to all</button>
+                      </div>
                     </div>
-                    <button class="acct-menu-item" style="padding:10px 14px;font-size:12px;white-space:nowrap;" onclick="saveAdminAffiliateDefaultCommission()">Save rate</button>
-                    <button class="acct-menu-item" style="padding:10px 14px;font-size:12px;white-space:nowrap;color:#33cc66;border-color:rgba(51,204,102,0.45);" onclick="applyStandardCommissionToAll()">Apply to all</button>
-                  </div>
-                </div>
-              </details>
+                  </details>
 
-              <details class="settings-acc-sub">
-                <summary>
-                  <div class="settings-acc-head">
-                    <span class="settings-acc-label">APPLICATIONS</span>
-                    <span class="settings-acc-chevron">›</span>
-                  </div>
-                  <div class="settings-acc-meta" id="acc-sum-aff-apps">pending · AI Approve</div>
-                </summary>
-                <div class="settings-acc-body">
-                  <div style="color:#ccc;font-size:12px;line-height:1.4;">AI Approve researches proof and decides approve / deny / pending. Manual overrides still available.</div>
-                  <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                    <button class="acct-menu-item aff-filter-btn active" data-aff-filter="pending" style="padding:5px 10px;font-size:11px;" onclick="setAdminAffiliateFilter('pending')">Pending</button>
-                    <button class="acct-menu-item aff-filter-btn" data-aff-filter="approved" style="padding:5px 10px;font-size:11px;" onclick="setAdminAffiliateFilter('approved')">Approved</button>
-                    <button class="acct-menu-item aff-filter-btn" data-aff-filter="denied" style="padding:5px 10px;font-size:11px;" onclick="setAdminAffiliateFilter('denied')">Denied</button>
-                    <button class="acct-menu-item aff-filter-btn" data-aff-filter="all" style="padding:5px 10px;font-size:11px;" onclick="setAdminAffiliateFilter('all')">All</button>
-                  </div>
-                  <div id="admin-affiliate-list" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow:auto;"></div>
-                  <div style="height:1px;background:rgba(255,255,255,0.08);"></div>
-                  <div style="font-size:10px;color:#999;letter-spacing:0.08em;text-transform:uppercase;">Add affiliate manually</div>
-                  <input id="admin-aff-name" type="text" placeholder="Name" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;">
-                  <input id="admin-aff-email" type="email" placeholder="Email" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;">
-                  <input id="admin-aff-paypal" type="text" placeholder="PayPal email (optional)" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;">
-                  <input id="admin-aff-venmo" type="text" placeholder="Venmo @username (optional)" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;">
-                  <input id="admin-aff-cashapp" type="text" placeholder="Cash App $cashtag (optional)" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;">
-                  <button class="auth-btn" style="margin:0;padding:10px;font-size:14px;" onclick="adminCreateAffiliateManual()">Add &amp; Approve</button>
-                </div>
-              </details>
-
-              <details class="settings-acc-sub">
-                <summary>
-                  <div class="settings-acc-head">
-                    <span class="settings-acc-label">PAYOUTS</span>
-                    <span class="settings-acc-chevron">›</span>
-                  </div>
-                  <div class="settings-acc-meta" id="acc-sum-aff-payouts">push · hold · auto @ threshold</div>
-                </summary>
-                <div class="settings-acc-body">
-                  <div style="color:#ccc;font-size:12px;line-height:1.4;">Ready payouts (≥ threshold, not held) can be pushed. Push writes a packet to Dropbox <span style="color:#33cc66;font-family:ui-monospace,Menlo,Consolas,monospace;">/TsunamiSystem/AffiliatePayouts/</span> and marks the ledger paid. You still send cash via their PayPal/Venmo/Cash App.</div>
-                  <label style="display:flex;align-items:center;gap:8px;color:#ccc;font-size:12px;cursor:pointer;">
-                    <input type="checkbox" id="admin-aff-auto-push" onchange="saveAffiliateAutoPush()" style="width:16px;height:16px;">
-                    Auto-process when affiliates hit $ <span id="admin-aff-threshold-label">25</span> owed
-                  </label>
-                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button class="acct-menu-item" style="padding:8px 12px;font-size:12px;color:#33cc66;border-color:rgba(51,204,102,0.45);" onclick="adminPushReadyPayouts()">Push ready payouts</button>
-                    <button class="acct-menu-item" style="padding:8px 12px;font-size:12px;" onclick="adminRefreshPayoutQueue()">Refresh queue</button>
-                  </div>
-                  <div id="admin-aff-payout-queue" style="display:flex;flex-direction:column;gap:8px;max-height:220px;overflow:auto;"></div>
-                </div>
-              </details>
-
-              <details class="settings-acc-sub">
-                <summary>
-                  <div class="settings-acc-head">
-                    <span class="settings-acc-label">STATEMENTS</span>
-                    <span class="settings-acc-chevron">›</span>
-                  </div>
-                  <div class="settings-acc-meta" id="acc-sum-aff-statements">monthly Dropbox archive</div>
-                </summary>
-                <div class="settings-acc-body">
-                  <div style="color:#ccc;font-size:12px;line-height:1.4;">Monthly statement CSV lands in Dropbox <span style="color:#33cc66;font-family:ui-monospace,Menlo,Consolas,monospace;">/TsunamiSystem/AffiliateStatements/</span>. Connect Dropbox under Connected Account first.</div>
-                  <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
-                    <div>
-                      <div style="font-size:10px;color:#999;text-transform:uppercase;margin-bottom:4px;">Month</div>
-                      <input id="admin-aff-statement-month" type="month" style="background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;color-scheme:dark;">
+                  <details class="settings-acc-sub">
+                    <summary>
+                      <div class="settings-acc-head">
+                        <span class="settings-acc-label">APPLICATIONS</span>
+                        <span class="settings-acc-chevron">›</span>
+                      </div>
+                      <div class="settings-acc-meta" id="acc-sum-aff-apps">pending · AI Approve</div>
+                    </summary>
+                    <div class="settings-acc-body">
+                      <div style="color:#ccc;font-size:12px;line-height:1.4;">AI Approve researches proof and decides approve / deny / pending. Manual overrides still available.</div>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <button class="acct-menu-item aff-filter-btn active" data-aff-filter="pending" style="padding:5px 10px;font-size:11px;" onclick="setAdminAffiliateFilter('pending')">Pending</button>
+                        <button class="acct-menu-item aff-filter-btn" data-aff-filter="approved" style="padding:5px 10px;font-size:11px;" onclick="setAdminAffiliateFilter('approved')">Approved</button>
+                        <button class="acct-menu-item aff-filter-btn" data-aff-filter="denied" style="padding:5px 10px;font-size:11px;" onclick="setAdminAffiliateFilter('denied')">Denied</button>
+                        <button class="acct-menu-item aff-filter-btn" data-aff-filter="all" style="padding:5px 10px;font-size:11px;" onclick="setAdminAffiliateFilter('all')">All</button>
+                      </div>
+                      <div id="admin-affiliate-list" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow:auto;"></div>
+                      <div style="height:1px;background:rgba(255,255,255,0.08);"></div>
+                      <div style="font-size:10px;color:#999;letter-spacing:0.08em;text-transform:uppercase;">Add affiliate manually</div>
+                      <input id="admin-aff-name" type="text" placeholder="Name" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;">
+                      <input id="admin-aff-email" type="email" placeholder="Email" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;">
+                      <input id="admin-aff-paypal" type="text" placeholder="PayPal email (optional)" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;">
+                      <input id="admin-aff-venmo" type="text" placeholder="Venmo @username (optional)" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;">
+                      <input id="admin-aff-cashapp" type="text" placeholder="Cash App $cashtag (optional)" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;">
+                      <button class="auth-btn" style="margin:0;padding:10px;font-size:14px;" onclick="adminCreateAffiliateManual()">Add &amp; Approve</button>
                     </div>
-                    <button class="acct-menu-item" style="padding:10px 14px;font-size:12px;" onclick="adminGenerateMonthlyStatement()">Generate + Dropbox</button>
-                  </div>
-                  <div id="admin-aff-statement-list" style="display:flex;flex-direction:column;gap:6px;max-height:180px;overflow:auto;"></div>
+                  </details>
+
+                  <details class="settings-acc-sub">
+                    <summary>
+                      <div class="settings-acc-head">
+                        <span class="settings-acc-label">PAYOUTS</span>
+                        <span class="settings-acc-chevron">›</span>
+                      </div>
+                      <div class="settings-acc-meta" id="acc-sum-aff-payouts">push · hold · auto @ threshold</div>
+                    </summary>
+                    <div class="settings-acc-body">
+                      <div style="color:#ccc;font-size:12px;line-height:1.4;">Ready payouts (≥ threshold, not held) can be pushed. Push writes a packet to Dropbox <span style="color:#33cc66;font-family:ui-monospace,Menlo,Consolas,monospace;">/TsunamiSystem/AffiliatePayouts/</span> and marks the ledger paid. You still send cash via their PayPal/Venmo/Cash App.</div>
+                      <label style="display:flex;align-items:center;gap:8px;color:#ccc;font-size:12px;cursor:pointer;">
+                        <input type="checkbox" id="admin-aff-auto-push" onchange="saveAffiliateAutoPush()" style="width:16px;height:16px;">
+                        Auto-process when affiliates hit $ <span id="admin-aff-threshold-label">25</span> owed
+                      </label>
+                      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button class="acct-menu-item" style="padding:8px 12px;font-size:12px;color:#33cc66;border-color:rgba(51,204,102,0.45);" onclick="adminPushReadyPayouts()">Push ready payouts</button>
+                        <button class="acct-menu-item" style="padding:8px 12px;font-size:12px;" onclick="adminRefreshPayoutQueue()">Refresh queue</button>
+                      </div>
+                      <div id="admin-aff-payout-queue" style="display:flex;flex-direction:column;gap:8px;max-height:220px;overflow:auto;"></div>
+                    </div>
+                  </details>
+
+                  <details class="settings-acc-sub">
+                    <summary>
+                      <div class="settings-acc-head">
+                        <span class="settings-acc-label">STATEMENTS</span>
+                        <span class="settings-acc-chevron">›</span>
+                      </div>
+                      <div class="settings-acc-meta" id="acc-sum-aff-statements">monthly Dropbox archive</div>
+                    </summary>
+                    <div class="settings-acc-body">
+                      <div style="color:#ccc;font-size:12px;line-height:1.4;">Monthly statement CSV lands in Dropbox <span style="color:#33cc66;font-family:ui-monospace,Menlo,Consolas,monospace;">/TsunamiSystem/AffiliateStatements/</span>. Connect Dropbox under Connected Account first.</div>
+                      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+                        <div>
+                          <div style="font-size:10px;color:#999;text-transform:uppercase;margin-bottom:4px;">Month</div>
+                          <input id="admin-aff-statement-month" type="month" style="background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;color-scheme:dark;">
+                        </div>
+                        <button class="acct-menu-item" style="padding:10px 14px;font-size:12px;" onclick="adminGenerateMonthlyStatement()">Generate + Dropbox</button>
+                      </div>
+                      <div id="admin-aff-statement-list" style="display:flex;flex-direction:column;gap:6px;max-height:180px;overflow:auto;"></div>
+                    </div>
+                  </details>
+
+                  <div id="admin-affiliate-msg" style="font-size:11px;color:#999;min-height:14px;"></div>
                 </div>
               </details>
-
-              <div id="admin-affiliate-msg" style="font-size:11px;color:#999;min-height:14px;"></div>
             </div>
           </div>
         </details>
@@ -1492,13 +1511,11 @@ function setSettingsAccMeta(id, text) {
 
 function updateAdminAccordionSummary() {
   var codesEl = document.getElementById('acc-sum-admin-codes');
-  var appsEl = document.getElementById('acc-sum-aff-apps');
-  var payEl = document.getElementById('acc-sum-aff-payouts');
+  var centerEl = document.getElementById('acc-sum-aff-center');
   var bits = [];
   if (codesEl && codesEl.textContent && codesEl.textContent !== 'loading…') bits.push(codesEl.textContent);
-  if (appsEl && appsEl.textContent) bits.push(appsEl.textContent);
-  if (payEl && payEl.textContent) bits.push(payEl.textContent);
-  setSettingsAccMeta('acc-sum-admin', bits.length ? bits.join('  ·  ') : 'codes · affiliates · payouts');
+  if (centerEl && centerEl.textContent) bits.push(centerEl.textContent);
+  setSettingsAccMeta('acc-sum-admin', bits.length ? bits.join('  ·  ') : 'codes · affiliate center');
 }
 
 function refreshSettingsAccordionSummaries() {
@@ -3153,8 +3170,8 @@ async function loadAdminAffiliates() {
       if (_adminAffiliateReady[r.id]) readyCount++;
     });
     setSettingsAccMeta(
-      'acc-sum-admin',
-      pending + ' pending  ·  ' + approved + ' approved  ·  ' + readyCount + ' ready  ·  ' + moneyFromCents(owedTotal)
+      'acc-sum-aff-center',
+      pending + ' pending  ·  ' + readyCount + ' ready  ·  ' + moneyFromCents(owedTotal)
     );
     setSettingsAccMeta('acc-sum-aff-apps', pending + ' pending  ·  ' + approved + ' approved  ·  ' + denied + ' denied');
     setSettingsAccMeta('acc-sum-aff-rates', 'standard $' + AFFILIATE_COMMISSION_DOLLARS + '/sale');
@@ -3166,6 +3183,7 @@ async function loadAdminAffiliates() {
   } catch (e) {
     console.error('Tsunami: loadAdminAffiliates failed:', e);
     list.innerHTML = '<div style="font-size:11px;color:#ff8888;">Could not load affiliates. Run the affiliates SQL migration in Supabase if tables are missing.</div>';
+    setSettingsAccMeta('acc-sum-aff-center', 'Could not load');
     setSettingsAccMeta('acc-sum-admin', 'Could not load affiliates');
   }
 }
