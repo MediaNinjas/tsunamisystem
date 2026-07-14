@@ -1013,17 +1013,22 @@ document.addEventListener('click', function(e) {
 async function signOut() {
   await _supabase.auth.signOut();
   currentUser = null;
-  var acctWrap = document.getElementById('acct-wrap');
-  if (acctWrap) acctWrap.style.display = 'none';
-  var appContent = document.getElementById('app-content');
-  if (appContent) appContent.style.display = 'none';
-  document.getElementById('auth-screen').style.display = 'flex';
-  document.getElementById('code-screen').style.display = 'none';
+  showAuthScreen();
 }
 
 async function checkUnlocked(user) {
   var { data } = await _supabase.from('profiles').select('unlocked').eq('id', user.id).single();
   return !!(data && data.unlocked);
+}
+
+function showAuthScreen(msg, msgType) {
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('code-screen').style.display = 'none';
+  var appContent = document.getElementById('app-content');
+  if (appContent) appContent.style.display = 'none';
+  var acctWrap = document.getElementById('acct-wrap');
+  if (acctWrap) acctWrap.style.display = 'none';
+  if (msg) setAuthMsg(msg, msgType || 'error');
 }
 
 function showCodeScreen() {
@@ -1145,11 +1150,14 @@ async function saveCardsToCloud() {
   try { localStorage.setItem('tsunami_v1', JSON.stringify(cards)); } catch(e) {}
 }
 
-// DEV BYPASS - add ?dev=1 to URL to skip auth
+// Boot: Sign In / Sign Up is the first thing everyone sees.
+// Only leave it after a real session is confirmed (then unlock check / cards).
 window.addEventListener('load', async function() {
+  showAuthScreen();
   if (window.location.search.includes('dev=1')) {
     var appContent = document.getElementById('app-content');
     if (appContent) appContent.style.display = 'block';
+    document.getElementById('auth-screen').style.display = 'none';
     await loadCardsFromCloud();
     render();
     setTimeout(function(){ checkAllPromos(); alignSortLabel(); }, 100);
@@ -1204,8 +1212,10 @@ window.addEventListener('load', async function() {
       await routeAfterSignIn(session.user);
     }
   } else if (stripeReturn || stripeCancel) {
-    document.getElementById('auth-screen').style.display = 'flex';
-    setAuthMsg('Sign in to finish activating your purchase.', 'error');
+    showAuthScreen('Sign in to finish activating your purchase.', 'error');
+  } else {
+    // No session: stay on Sign In / Sign Up (already shown at boot)
+    showAuthScreen();
   }
 });
 
@@ -1216,8 +1226,7 @@ _supabase.auth.onAuthStateChange(async function(event, session) {
     await routeAfterSignIn(session.user);
   } else {
     currentUser = null;
-    document.getElementById('auth-screen').style.display = 'flex';
-    document.getElementById('code-screen').style.display = 'none';
+    showAuthScreen();
   }
 });
 
