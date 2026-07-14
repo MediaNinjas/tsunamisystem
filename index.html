@@ -1877,12 +1877,44 @@ async function loadAdminPromoCodes() {
           '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:16px;letter-spacing:0.1em;color:#fff;word-break:break-all;">' + escHtml(row.code) + '</div>' +
           '<div style="font-size:11px;color:' + statusColor + ';">' + statusText + '</div>' +
         '</div>' +
-        '<button type="button" class="acct-menu-item" style="padding:4px 8px;font-size:11px;width:auto;flex-shrink:0;" onclick="copyPromoCodeValue(\'' + codeJs + '\')">Copy</button>' +
+      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 10px;">' +
+        '<div style="min-width:0;text-align:left;">' +
+          '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:16px;letter-spacing:0.1em;color:#fff;word-break:break-all;">' + escHtml(row.code) + '</div>' +
+          '<div style="font-size:11px;color:' + statusColor + ';">' + statusText + '</div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">' +
+          '<button type="button" class="acct-menu-item danger" title="Delete code" style="padding:4px 8px;font-size:14px;width:auto;line-height:1;" onclick="deleteAdminPromoCode(\'' + codeJs + '\')">×</button>' +
+          '<button type="button" class="acct-menu-item" style="padding:4px 8px;font-size:11px;width:auto;" onclick="copyPromoCodeValue(\'' + codeJs + '\')">Copy</button>' +
+        '</div>' +
       '</div>';
     }).join('');
   } catch (e) {
     list.innerHTML = '<div style="font-size:11px;color:#ff8888;">Could not load codes.</div>';
     console.error('Tsunami: loadAdminPromoCodes failed:', e);
+  }
+}
+
+async function deleteAdminPromoCode(code) {
+  if (!currentUser || currentUser.email !== ADMIN_EMAIL || !code) return;
+  if (!confirm('Delete promo code ' + code + '?\n\nCustomers will no longer be able to redeem it.')) return;
+  setAdminCodeMsg('Deleting ' + code + '…', false);
+  try {
+    var { error } = await _supabase.rpc('admin_delete_promo_code', { p_code: code });
+    if (error) {
+      // Fallback direct delete if RPC missing but RLS somehow allows
+      var del = await _supabase.from('codes').delete().eq('code', code).eq('type', 'free');
+      if (del.error) throw error;
+    }
+    var result = document.getElementById('admin-code-value');
+    if (result && result.textContent === code) {
+      var wrap = document.getElementById('admin-code-result');
+      if (wrap) wrap.style.display = 'none';
+      result.textContent = '';
+    }
+    setAdminCodeMsg('Deleted ' + code, false);
+    await loadAdminPromoCodes();
+  } catch (e) {
+    setAdminCodeMsg('Delete failed: ' + (e.message || e), true);
   }
 }
 
