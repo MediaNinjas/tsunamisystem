@@ -496,8 +496,8 @@ input[type="date"] { color-scheme: dark; }
           </div>
           <div style="display:flex;gap:8px;align-items:center;">
             <div style="flex:1;">
-              <div style="font-size:10px;color:#999;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Max uses</div>
-              <input id="admin-code-uses" type="number" min="1" value="1" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;">
+              <div style="font-size:11px;color:#fff;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;font-weight:600;">Max uses</div>
+              <input id="admin-code-uses" type="text" inputmode="numeric" pattern="[0-9]*" value="1" autocomplete="off" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:#fff;-webkit-text-fill-color:#fff;caret-color:#fff;padding:8px 10px;font-size:15px;font-family:'DM Sans',sans-serif;outline:none;color-scheme:dark;">
             </div>
             <button class="acct-menu-item" style="padding:8px 12px;font-size:12px;white-space:nowrap;align-self:flex-end;" onclick="generateAdminCodeFromSettings()">Create code</button>
           </div>
@@ -1376,24 +1376,83 @@ function startAutoBackupWatcher() {
 
 function cacheDriveTokenFromSession(session) {
   if (!session || !session.provider_token) return;
+  var uid = (session.user && session.user.id) || (currentUser && currentUser.id) || null;
+  var payload = {
+    token: session.provider_token,
+    refresh: session.provider_refresh_token || null,
+    expires: Date.now() + (55 * 60 * 1000),
+    user_id: uid
+  };
   try {
-    localStorage.setItem('tsunami_gdrive_token', JSON.stringify({
-      token: session.provider_token,
-      refresh: session.provider_refresh_token || null,
-      expires: Date.now() + (50 * 60 * 1000)
-    }));
-  } catch(e) {}
+    localStorage.setItem('tsunami_gdrive_token', JSON.stringify(payload));
+    if (uid) localStorage.setItem('tsunami_gdrive_token_' + uid, JSON.stringify(payload));
+  } catch (e) {}
+}
+
+function gdriveStorageKey(uid) {
+  return 'tsunami_gdrive_token_' + (uid || (currentUser && currentUser.id) || '');
+}
+
+function dropboxStorageKey(uid) {
+  return 'tsunami_dropbox_token_' + (uid || (currentUser && currentUser.id) || '');
+}
+
+function readStoredGdrive(uid) {
+  try {
+    var raw = null;
+    if (uid) raw = localStorage.getItem(gdriveStorageKey(uid));
+    if (!raw) raw = localStorage.getItem('tsunami_gdrive_token');
+    if (!raw) return null;
+    var parsed = JSON.parse(raw);
+    if (parsed && parsed.user_id && uid && parsed.user_id !== uid) return null;
+    return parsed;
+  } catch (e) { return null; }
 }
 
 function getGdriveToken() {
-  try {
-    var raw = localStorage.getItem('tsunami_gdrive_token');
-    if (raw) {
-      var parsed = JSON.parse(raw);
-      if (parsed.token && parsed.expires > Date.now()) return parsed.token;
-    }
-  } catch(e) {}
+  var uid = currentUser && currentUser.id;
+  var parsed = readStoredGdrive(uid);
+  if (parsed && parsed.token && parsed.expires > Date.now()) return parsed.token;
   return null;
+}
+
+function hasStoredGdriveConnection() {
+  var parsed = readStoredGdrive(currentUser && currentUser.id);
+  return !!(parsed && (parsed.token || parsed.refresh));
+}
+
+async function refreshGoogleDriveAccessToken() {
+  var uid = currentUser && currentUser.id;
+  var parsed = readStoredGdrive(uid);
+  if (!parsed || !parsed.refresh || !isConfigured(GOOGLE_DRIVE_CLIENT_ID)) return null;
+  try {
+    var body = new URLSearchParams({
+      client_id: GOOGLE_DRIVE_CLIENT_ID,
+      refresh_token: parsed.refresh,
+      grant_type: 'refresh_token'
+    });
+    var res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    });
+    if (!res.ok) return null;
+    var data = await res.json();
+    if (!data.access_token) return null;
+    var next = {
+      token: data.access_token,
+      refresh: parsed.refresh,
+      expires: Date.now() + ((data.expires_in ? Number(data.expires_in) : 3600) - 60) * 1000,
+      user_id: uid || parsed.user_id || null
+    };
+    try {
+      localStorage.setItem('tsunami_gdrive_token', JSON.stringify(next));
+      if (next.user_id) localStorage.setItem(gdriveStorageKey(next.user_id), JSON.stringify(next));
+    } catch (e) {}
+    return next.token;
+  } catch (e) {
+    return null;
+  }
 }
 
 async function refreshGdriveTokenFromSession() {
@@ -1403,12 +1462,48 @@ async function refreshGdriveTokenFromSession() {
       cacheDriveTokenFromSession(data.session);
       return data.session.provider_token;
     }
-  } catch(e) {}
-  return getGdriveToken();
+  } catch (e) {}
+  var existing = getGdriveToken();
+  if (existing) return existing;
+  return await refreshGoogleDriveAccessToken();
 }
 
 function getDropboxToken() {
-  try { return localStorage.getItem('tsunami_dropbox_token'); } catch(e) { return null; }
+  try {
+    var uid = currentUser && currentUser.id;
+    if (uid) {
+      var keyed = localStorage.getItem(dropboxStorageKey(uid));
+      if (keyed) return keyed;
+    }
+    return localStorage.getItem('tsunami_dropbox_token');
+  } catch (e) { return null; }
+}
+
+function setDropboxToken(token) {
+  if (!token) return;
+  try {
+    localStorage.setItem('tsunami_dropbox_token', token);
+    if (currentUser && currentUser.id) {
+      localStorage.setItem(dropboxStorageKey(currentUser.id), token);
+    }
+  } catch (e) {}
+}
+
+function adoptConnectionTokensForUser(user) {
+  if (!user || !user.id) return;
+  try {
+    var legacyG = localStorage.getItem('tsunami_gdrive_token');
+    if (legacyG && !localStorage.getItem(gdriveStorageKey(user.id))) {
+      var parsed = JSON.parse(legacyG);
+      parsed.user_id = user.id;
+      localStorage.setItem(gdriveStorageKey(user.id), JSON.stringify(parsed));
+      localStorage.setItem('tsunami_gdrive_token', JSON.stringify(parsed));
+    }
+    var legacyD = localStorage.getItem('tsunami_dropbox_token');
+    if (legacyD && !localStorage.getItem(dropboxStorageKey(user.id))) {
+      localStorage.setItem(dropboxStorageKey(user.id), legacyD);
+    }
+  } catch (e) {}
 }
 
 function applyRestoredCards(data) {
@@ -1459,8 +1554,9 @@ function updateBackupUI() {
   if (!gStatus) return;
 
   var gToken = getGdriveToken();
-  if (gToken) {
-    gStatus.textContent = 'Connected';
+  var gStored = hasStoredGdriveConnection();
+  if (gToken || gStored) {
+    gStatus.textContent = gToken ? 'Connected' : 'Saved — will refresh';
     gStatus.style.color = '#33cc66';
     gActions.innerHTML = backupActionsDropdown('gdrive-dd', [
       { label: 'Backup', fn: 'backupToGoogleDrive' },
@@ -1512,7 +1608,10 @@ async function connectGoogleDrive() {
 }
 
 function disconnectGoogleDrive() {
-  try { localStorage.removeItem('tsunami_gdrive_token'); } catch(e) {}
+  try {
+    localStorage.removeItem('tsunami_gdrive_token');
+    if (currentUser && currentUser.id) localStorage.removeItem(gdriveStorageKey(currentUser.id));
+  } catch (e) {}
   setBackupMsg('Google Drive disconnected for backups (you stay signed in).', false);
   updateBackupUI();
 }
@@ -1619,7 +1718,10 @@ function connectDropbox() {
 }
 
 function disconnectDropbox() {
-  try { localStorage.removeItem('tsunami_dropbox_token'); } catch(e) {}
+  try {
+    localStorage.removeItem('tsunami_dropbox_token');
+    if (currentUser && currentUser.id) localStorage.removeItem(dropboxStorageKey(currentUser.id));
+  } catch (e) {}
   setBackupMsg('Dropbox disconnected.', false);
   updateBackupUI();
 }
@@ -2014,6 +2116,8 @@ document.addEventListener('click', function(e) {
 });
 
 async function signOut() {
+  // Keep Drive/Dropbox connection tokens so logging back into the same account
+  // restores backup connections without reconnecting.
   await _supabase.auth.signOut();
   currentUser = null;
   showAuthScreen();
@@ -2049,6 +2153,7 @@ function showCodeScreen() {
 
 async function routeAfterSignIn(user) {
   currentUser = user;
+  adoptConnectionTokensForUser(user);
   var unlocked = await checkUnlocked(user);
   if (unlocked) {
     launchApp();
@@ -2098,6 +2203,7 @@ async function launchApp(opts) {
   document.getElementById('code-screen').style.display = 'none';
   // Show Google avatar in account button if available
   if (currentUser) {
+    adoptConnectionTokensForUser(currentUser);
     var avatar = currentUser.user_metadata && currentUser.user_metadata.avatar_url;
     var btn = document.getElementById('acct-btn');
     if (avatar && btn) {
@@ -2187,7 +2293,7 @@ window.addEventListener('load', async function() {
     var params = new URLSearchParams(window.location.hash.substring(1));
     var dbToken = params.get('access_token');
     if (dbToken) {
-      try { localStorage.setItem('tsunami_dropbox_token', dbToken); } catch(e) {}
+      setDropboxToken(dbToken);
     }
     window.history.replaceState({}, document.title, window.location.pathname);
   }
