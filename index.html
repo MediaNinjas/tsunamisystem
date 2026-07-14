@@ -650,6 +650,7 @@ async function handleAuth() {
 // PayPal: developer.paypal.com → Apps → Client ID (Live)
 // Google: console.cloud.google.com → OAuth Web client (authorized JS origins = tsunamiapp.medianinjas.tv)
 // Dropbox: dropbox.com/developers/apps → App key (OAuth 2 redirect = https://tsunamiapp.medianinjas.tv/)
+// Enable scopes: files.content.write/read + files.metadata.write/read (Permissions tab), then reconnect.
 var TSUNAMI_PRICE_USD = '20.00';
 var TSUNAMI_PAYPAL_CLIENT_ID = '';
 var GOOGLE_DRIVE_CLIENT_ID = '634001206199-cd5irrg9t7fn9p8ni1i8gf8f79gtt3lr.apps.googleusercontent.com';
@@ -1565,11 +1566,20 @@ function connectDropbox() {
     return;
   }
   var redirectUri = window.location.origin + '/';
+  // Scoped Dropbox apps need these on the authorize URL or upload returns 400.
+  var scopes = [
+    'files.content.write',
+    'files.content.read',
+    'files.metadata.write',
+    'files.metadata.read'
+  ].join(' ');
   var authUrl = 'https://www.dropbox.com/oauth2/authorize' +
     '?client_id=' + encodeURIComponent(DROPBOX_APP_KEY) +
     '&response_type=token' +
     '&redirect_uri=' + encodeURIComponent(redirectUri) +
+    '&scope=' + encodeURIComponent(scopes) +
     '&state=tsunami_dropbox';
+  setBackupMsg('Opening Dropbox… approve file access, then try Backup again.', false);
   window.location.href = authUrl;
 }
 
@@ -1577,6 +1587,33 @@ function disconnectDropbox() {
   try { localStorage.removeItem('tsunami_dropbox_token'); } catch(e) {}
   setBackupMsg('Dropbox disconnected.', false);
   updateBackupUI();
+}
+
+async function dropboxReadError(res) {
+  try {
+    var j = await res.json();
+    if (j && j.error_summary) return String(j.error_summary);
+    if (j && j.error) return typeof j.error === 'string' ? j.error : JSON.stringify(j.error);
+    return JSON.stringify(j);
+  } catch (e) {
+    try { return await res.text(); } catch (e2) { return ''; }
+  }
+}
+
+async function ensureDropboxBackupFolder(token) {
+  var res = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ path: '/TsunamiBackups', autorename: false })
+  });
+  if (res.ok) return { ok: true };
+  var err = await dropboxReadError(res);
+  // Already exists is fine.
+  if (res.status === 409 && /conflict/i.test(err)) return { ok: true };
+  return { ok: false, status: res.status, err: err };
 }
 
 async function backupToDropbox(opts) {
@@ -1595,11 +1632,28 @@ async function backupToDropbox(opts) {
   var payload = { version: 1, exported_at: new Date().toISOString(), cards: cards };
   var fileContent = JSON.stringify(payload, null, 2);
   try {
+    var folder = await ensureDropboxBackupFolder(token);
+    if (!folder.ok) {
+      if (!silent) {
+        var folderHint = /scope/i.test(folder.err || '')
+          ? ' Reconnect Dropbox and approve file access.'
+          : '';
+        setBackupMsg('Dropbox folder error (' + folder.status + '): ' + (folder.err || 'unknown') + folderHint, true);
+        if (/scope/i.test(folder.err || '') || folder.status === 401) disconnectDropbox();
+      }
+      return false;
+    }
+
     var res = await fetch('https://content.dropboxapi.com/2/files/upload', {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer ' + token,
-        'Dropbox-API-Arg': JSON.stringify({ path: filename, mode: 'overwrite', mute: true, autorename: true }),
+        'Dropbox-API-Arg': JSON.stringify({
+          path: filename,
+          mode: { '.tag': 'overwrite' },
+          mute: true,
+          autorename: false
+        }),
         'Content-Type': 'application/octet-stream'
       },
       body: fileContent
@@ -1608,11 +1662,17 @@ async function backupToDropbox(opts) {
       markBackupCompleted();
       if (!silent) setBackupMsg('Backed up to Dropbox: ' + filename, false);
       return true;
-    } else if (res.status === 401) {
+    }
+    var err = await dropboxReadError(res);
+    if (res.status === 401) {
       if (!silent) setBackupMsg('Dropbox session expired - reconnect and try again.', true);
       disconnectDropbox();
     } else if (!silent) {
-      setBackupMsg('Dropbox backup failed (' + res.status + ').', true);
+      var hint = /scope|not permitted/i.test(err)
+        ? ' Disconnect Dropbox, Connect again, and approve file permissions.'
+        : '';
+      setBackupMsg('Dropbox backup failed (' + res.status + '): ' + (err || 'bad request') + hint, true);
+      if (/scope|not permitted/i.test(err)) disconnectDropbox();
     }
   } catch (e) {
     if (!silent) setBackupMsg('Dropbox backup error: ' + e.message, true);
