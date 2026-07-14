@@ -494,12 +494,12 @@ input[type="date"] { color-scheme: dark; }
             <div style="font-size:10px;color:#999;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Custom code (optional)</div>
             <input id="admin-code-custom" type="text" maxlength="32" placeholder="Blank = random TSU-XXXX-XXXX" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;">
           </div>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <div style="flex:1;">
-              <div style="font-size:11px;color:#fff;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;font-weight:600;">Max uses</div>
-              <input id="admin-code-uses" type="text" inputmode="numeric" pattern="[0-9]*" value="1" autocomplete="off" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:#fff;-webkit-text-fill-color:#fff;caret-color:#fff;padding:8px 10px;font-size:15px;font-family:'DM Sans',sans-serif;outline:none;color-scheme:dark;">
+          <div>
+            <div style="font-size:11px;color:#fff;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;font-weight:600;">Max uses</div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input id="admin-code-uses" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="7" size="8" value="1" autocomplete="off" placeholder="1–1000000" style="flex:1;min-width:10ch;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:#fff;-webkit-text-fill-color:#fff;caret-color:#fff;padding:10px 12px;font-size:16px;font-family:'DM Sans',sans-serif;outline:none;color-scheme:dark;letter-spacing:0.04em;">
+              <button class="acct-menu-item" style="padding:10px 14px;font-size:12px;white-space:nowrap;flex-shrink:0;" onclick="generateAdminCodeFromSettings()">Create code</button>
             </div>
-            <button class="acct-menu-item" style="padding:8px 12px;font-size:12px;white-space:nowrap;align-self:flex-end;" onclick="generateAdminCodeFromSettings()">Create code</button>
           </div>
           <button class="auth-btn" style="margin:0;padding:10px;font-size:14px;" onclick="generateAdminCode(500)">Create 500-Use Code</button>
           <div id="admin-code-result" style="display:none;background:rgba(0,0,0,0.35);border:1px solid rgba(51,204,102,0.35);border-radius:8px;padding:10px;">
@@ -2038,11 +2038,16 @@ function copyAdminCode() {
 
 function generateAdminCodeFromSettings() {
   var input = document.getElementById('admin-code-uses');
-  var n = input ? parseInt(input.value, 10) : 1;
+  var n = input ? parseInt(String(input.value || '').replace(/[^\d]/g, ''), 10) : 1;
   if (!n || n < 1) {
     setAdminCodeMsg('Enter a whole number of 1 or more.', true);
     return;
   }
+  if (n > 1000000) {
+    setAdminCodeMsg('Max uses can be up to 1,000,000 (7 digits).', true);
+    return;
+  }
+  if (input) input.value = String(n);
   generateAdminCode(n);
 }
 
