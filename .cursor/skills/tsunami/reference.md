@@ -65,7 +65,7 @@ If RLS is too permissive, users could unlock without paying. If too strict, PayP
 
 **Important:** Webhook code reads `SUPABASE_SERVICE_ROLE_KEY`. If secrets were set under a different name (e.g. `SERVICE_ROLE_KEY`), the webhook will fail to unlock.
 
-`SITE_URL` must be `https://tsunamisystem.netlify.app`. Never `medianinjas.tv` (unrelated AV site). `create-checkout` allowlists Netlify and ignores wrong origins.
+`SITE_URL` must be `https://tsunamiapp.medianinjas.tv`. Never bare `medianinjas.tv` (unrelated AV site). `create-checkout` allowlists the Tsunami subdomain (+ Netlify alias) and ignores wrong origins.
 
 ## Netlify
 

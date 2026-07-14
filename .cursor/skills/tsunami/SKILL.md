@@ -15,8 +15,8 @@ description: >-
 | **App** | Tsunami System — debt payoff / credit card planner |
 | **NOT** | Starship Phoenix Autoposter (different project) |
 | **Repo** | `https://github.com/MediaNinjas/tsunamisystem.git` |
-| **Live URL** | `https://tsunamisystem.netlify.app` (primary; Netlify deploy) |
-| **Not Tsunami** | `medianinjas.tv` / AV sites — separate product; never use for Stripe/OAuth redirects |
+| **Live URL** | `https://tsunamiapp.medianinjas.tv` (primary); `https://tsunamisystem.netlify.app` (alias) |
+| **Not Tsunami** | Bare `medianinjas.tv` — separate AV site; never use for Stripe/OAuth redirects |
 | **Supabase** | Project ref `fxrhddcexwklyfzzgnvz` |
 
 ## Architecture

@@ -12,8 +12,8 @@
 //   STRIPE_SECRET_KEY   - your Stripe secret key (starts with sk_)
 //   TSUNAMI_PRICE_ID    - the Stripe Price ID for the one-time product
 //                         (create this in Stripe Dashboard -> Product catalog -> Add product)
-//   SITE_URL            - https://tsunamisystem.netlify.app (no trailing slash)
-//                         DO NOT use medianinjas.tv — that is a separate AV site.
+//   SITE_URL            - https://tsunamiapp.medianinjas.tv (no trailing slash)
+//                         DO NOT use bare medianinjas.tv — that is a separate AV site.
 
 import Stripe from "npm:stripe@17";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -22,9 +22,10 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
   apiVersion: "2024-11-20.acacia",
 });
 
-// Canonical Tsunami app URL. Never fall back to medianinjas.tv (unrelated product).
-const TSUNAMI_DEFAULT_SITE_URL = "https://tsunamisystem.netlify.app";
+// Canonical Tsunami app URL. Never use bare medianinjas.tv (unrelated AV site).
+const TSUNAMI_DEFAULT_SITE_URL = "https://tsunamiapp.medianinjas.tv";
 const ALLOWED_SITE_ORIGINS = new Set([
+  "https://tsunamiapp.medianinjas.tv",
   "https://tsunamisystem.netlify.app",
 ]);
 
