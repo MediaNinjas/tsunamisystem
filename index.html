@@ -1971,13 +1971,15 @@ async function loadAdminPromoCodes() {
       var useCount = (typeof row.use_count === 'number' && row.use_count >= 0) ? row.use_count : 0;
       var left = Math.max(0, maxUses - useCount);
       var exhausted = row.used === true || left <= 0;
-      var statusColor = exhausted ? '#ff8888' : '#33cc66';
-      var statusText = exhausted ? 'Used up' : (left + ' left of ' + maxUses);
+      var remainColor = exhausted ? '#ff8888' : '#33cc66';
+      var remainLabel = exhausted ? '0 left' : (left + ' left');
       var codeJs = String(row.code || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 10px;">' +
-        '<div style="min-width:0;text-align:left;">' +
+        '<div style="min-width:0;flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
           '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:16px;letter-spacing:0.1em;color:#fff;word-break:break-all;">' + escHtml(row.code) + '</div>' +
-          '<div style="font-size:11px;color:' + statusColor + ';">' + statusText + '</div>' +
+          '<div style="flex-shrink:0;font-size:11px;font-weight:700;color:' + remainColor + ';background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:3px 8px;white-space:nowrap;" title="' + useCount + ' of ' + maxUses + ' used">' +
+            remainLabel +
+          '</div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">' +
           '<button type="button" class="acct-menu-item danger" title="Delete code" style="padding:4px 8px;font-size:14px;width:auto;line-height:1;" onclick="deleteAdminPromoCode(\'' + codeJs + '\')">×</button>' +
