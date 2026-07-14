@@ -385,7 +385,9 @@ input[type="date"] { color-scheme: dark; }
   <!-- Google Identity Services - used for Google Drive backup (separate from Google Sign-In) -->
   <script src="https://accounts.google.com/gsi/client"></script>
   <script>
-    const _supabase = supabase.createClient('https://fxrhddcexwklyfzzgnvz.supabase.co', 'sb_publishable_erePboPbCCmm2tPW4JnJkw_eWZdmNEM');
+    window.TSUNAMI_SUPABASE_ANON_KEY = 'sb_publishable_erePboPbCCmm2tPW4JnJkw_eWZdmNEM';
+    const TSUNAMI_SUPABASE_ANON_KEY = window.TSUNAMI_SUPABASE_ANON_KEY;
+    const _supabase = supabase.createClient('https://fxrhddcexwklyfzzgnvz.supabase.co', TSUNAMI_SUPABASE_ANON_KEY);
   </script>
 </head>
 <body>
@@ -500,6 +502,25 @@ input[type="date"] { color-scheme: dark; }
               <div id="settings-email" style="color:#fff;font-size:14px;">—</div>
               <div id="settings-provider" style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">—</div>
             </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="settings-acc" id="acc-security">
+        <summary>
+          <div class="settings-acc-head">
+            <span class="settings-acc-label">SECURITY</span>
+            <span class="settings-acc-chevron">›</span>
+          </div>
+          <div class="settings-acc-meta" id="acc-sum-security">your data, protected</div>
+        </summary>
+        <div class="settings-acc-body">
+          <div class="settings-acc-panel" style="color:#fff;font-size:13px;line-height:1.5;">
+            <div>🔒 Your card data is private to your account — locked down by database rules so no other user can ever see it.</div>
+            <div>🔑 Login usernames/passwords you store are encrypted on your device before they're sent to the cloud. We can't read them, and neither can anyone who might access the database.</div>
+            <div>📄 CSV exports leave out saved login secrets by default — you have to opt in if you want them included.</div>
+            <div>🧹 Want a clean wipe? Import a blank CSV to clear your cards. There's no "reset everything" button, so this is the intentional way to start fresh.</div>
+            <div>📱 New device tip: your encryption key lives on this device, so previously-saved login secrets won't decrypt on a new one. Just re-enter them once and they'll re-encrypt locally.</div>
           </div>
         </div>
       </details>
@@ -773,6 +794,10 @@ input[type="date"] { color-scheme: dark; }
 <div id="ledger-view" style="display:none;">
   <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
     <button onclick="downloadCardsCsv()" style="background:rgba(0,180,100,0.15);border:1.5px solid rgba(0,180,100,0.4);color:#33cc66;font-family:&#39;Bebas Neue&#39;,sans-serif;font-size:14px;letter-spacing:0.1em;padding:8px 16px;border-radius:8px;cursor:pointer;">⬇ EXPORT CSV</button>
+    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#aaa;cursor:pointer;user-select:none;">
+      <input type="checkbox" id="csv-include-secrets" onchange="window._csvIncludeSecrets = this.checked;" style="cursor:pointer;">
+      Include login secrets
+    </label>
     <label style="background:rgba(0,100,255,0.15);border:1.5px solid rgba(0,100,255,0.4);color:#6699ff;font-family:&#39;Bebas Neue&#39;,sans-serif;font-size:14px;letter-spacing:0.1em;padding:8px 16px;border-radius:8px;cursor:pointer;">
       ⬆ IMPORT CSV
       <input type="file" accept=".csv" onchange="importCSV(this)" style="display:none;">
@@ -926,12 +951,11 @@ function initPaypalButton() {
         }
         var code = makePromoCode();
         try {
-          var ins = await _supabase.from('codes').insert({
-            code: code, used: true, used_by: currentUser.id, used_at: new Date().toISOString(),
-            paypal_order_id: order.id, max_uses: 1, use_count: 1, type: 'paid'
+          var { error: rpcErr } = await _supabase.rpc('complete_paypal_unlock', {
+            p_order_id: order.id,
+            p_code: code
           });
-          if (ins.error) throw ins.error;
-          await unlockProfileWithCode(code);
+          if (rpcErr) throw rpcErr;
           try {
             var ref = localStorage.getItem('tsunami_affiliate_ref');
             if (ref) {
@@ -1302,61 +1326,37 @@ async function completeWaveGate() {
 }
 
 async function redeemValidatedCode(code, data, maxUses, useCount) {
-  var nextCount = useCount + 1;
-  var nowExhausted = nextCount >= maxUses;
-  var { data: updated, error: updErr } = await _supabase
-    .from('codes')
-    .update({
-      use_count: nextCount,
-      used: nowExhausted,
-      used_by: currentUser.id,
-      used_at: new Date().toISOString()
-    })
-    .eq('code', code)
-    .eq('use_count', useCount)
-    .select();
-  if (updErr || !updated || !updated.length) {
-    setCodeMsg('That code was just taken. Try again or use another code.', 'error');
+  // Redemption itself (validity, use-count, conflicts, and unlocking the
+  // profile) is handled atomically server-side by the redeem_promo_code RPC.
+  // The client-side checks above are only for a fast/friendly UX pre-check.
+  var { error: rpcErr } = await _supabase.rpc('redeem_promo_code', { p_code: code });
+  if (rpcErr) {
+    var msgText = String((rpcErr && rpcErr.message) || '').toLowerCase();
+    if (msgText.indexOf('rate') !== -1 || msgText.indexOf('too many') !== -1) {
+      setCodeMsg('Too many attempts — wait a minute and try again.', 'error');
+    } else if (msgText.indexOf('taken') !== -1 || msgText.indexOf('conflict') !== -1 || msgText.indexOf('exhaust') !== -1) {
+      setCodeMsg('That code was just taken. Try again or use another code.', 'error');
+    } else if (msgText.indexOf('invalid') !== -1 || msgText.indexOf('used') !== -1) {
+      setCodeMsg('Invalid or already used code.', 'error');
+    } else {
+      console.error('Tsunami: unlock save failed:', rpcErr);
+      setCodeMsg('Code accepted but unlock did not save. Try again or contact support.', 'error');
+    }
     return;
   }
 
-  try {
-    await unlockProfileWithCode(code);
-    try { localStorage.setItem('tsunami_last_code', code); } catch (e) {}
-  } catch (e) {
-    console.error('Tsunami: unlock save failed:', e);
-    setCodeMsg('Code accepted but unlock did not save. Try again or contact support.', 'error');
-    return;
-  }
+  try { localStorage.setItem('tsunami_last_code', code); } catch (e) {}
   setCodeMsg('Unlocked — welcome aboard the first wave!', 'success');
   setTimeout(function(){ launchApp(); }, 800);
 }
 
 async function unlockProfileWithCode(code) {
+  // Legacy thin wrapper — kept for any old call sites. Delegates to the same
+  // server-side RPC that owns validation + redemption atomically.
   if (!currentUser || !currentUser.id) throw new Error('Not signed in');
-  var patch = { unlocked: true, code_used: code };
-  if (currentUser.email) patch.email = currentUser.email;
-
-  var { data: updated, error: updateError } = await _supabase
-    .from('profiles')
-    .update(patch)
-    .eq('id', currentUser.id)
-    .select('id, unlocked, code_used');
-  if (updateError) throw updateError;
-  if (updated && updated.length && updated[0].unlocked) return updated[0];
-
-  // No row yet — create one (update alone would look unlocked once, then "forget" forever)
-  var insertRow = { id: currentUser.id, unlocked: true, code_used: code };
-  if (currentUser.email) insertRow.email = currentUser.email;
-  var { data: inserted, error: insertError } = await _supabase
-    .from('profiles')
-    .insert(insertRow)
-    .select('id, unlocked, code_used');
-  if (insertError) throw insertError;
-  if (!inserted || !inserted.length || !inserted[0].unlocked) {
-    throw new Error('Profile unlock did not persist');
-  }
-  return inserted[0];
+  var { error } = await _supabase.rpc('redeem_promo_code', { p_code: code });
+  if (error) throw error;
+  return { id: currentUser.id, unlocked: true, code_used: code };
 }
 
 async function signInWithGoogle() {
@@ -1375,13 +1375,43 @@ async function signInWithGoogle() {
 }
 
 var ADMIN_EMAIL = 'serano9@gmail.com';
+var _isAdminCached = false;
 
 function isAdminUser(user) {
   var email = user && user.email ? String(user.email).trim().toLowerCase() : '';
-  return email === String(ADMIN_EMAIL).toLowerCase();
+  if (email === String(ADMIN_EMAIL).toLowerCase()) return true;
+  return !!_isAdminCached;
 }
 
-function openSettings() {
+async function refreshAdminFlag(user) {
+  var email = user && user.email ? String(user.email).trim().toLowerCase() : '';
+  if (email === String(ADMIN_EMAIL).toLowerCase()) {
+    _isAdminCached = true;
+    return true;
+  }
+  if (!user || !user.id) {
+    _isAdminCached = false;
+    return false;
+  }
+  try {
+    var { data, error } = await _supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (error) {
+      _isAdminCached = false;
+      return false;
+    }
+    _isAdminCached = !!(data && data.is_admin);
+    return _isAdminCached;
+  } catch (e) {
+    _isAdminCached = false;
+    return false;
+  }
+}
+
+async function openSettings() {
   if (!currentUser) return;
   document.getElementById('acct-menu').classList.remove('open');
   var emailEl = document.getElementById('settings-email');
@@ -1412,11 +1442,13 @@ function openSettings() {
   supabaseGetProfileBilling();
   updateBackupUI();
   updateBackupFreqUI();
+  await refreshAdminFlag(currentUser);
   var adminSection = document.getElementById('settings-admin-section');
   if (adminSection) {
     var isAdmin = isAdminUser(currentUser);
     adminSection.style.display = isAdmin ? 'block' : 'none';
   }
+  setSettingsAccMeta('acc-sum-security', 'Per-user card data · on-device encrypted login secrets');
   var adminMsg = document.getElementById('admin-code-msg');
   if (adminMsg) adminMsg.textContent = '';
   var affAdminMsg = document.getElementById('admin-affiliate-msg');
@@ -1503,18 +1535,35 @@ function cancelDeleteAccount() {
 async function finalizeDeleteAccount() {
   document.getElementById('delete-confirm-2').style.display = 'none';
   try {
-    // Remove their app data - card data, profile, and free up any codes tied to them
-    await _supabase.from('cards').delete().eq('user_id', currentUser.id);
-    await _supabase.from('profiles').delete().eq('id', currentUser.id);
-    try { localStorage.removeItem('tsunami_v1'); } catch(e) {}
+    var { data: sessionData } = await _supabase.auth.getSession();
+    var accessToken = sessionData && sessionData.session && sessionData.session.access_token;
+    if (!accessToken) throw new Error('Not signed in');
+    // Deleting the actual auth.users row needs the service-role key, which can
+    // never be exposed client-side — a serverless function does that safely.
+    var res = await fetch(TSUNAMI_SUPABASE_URL + '/functions/v1/delete-account', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + accessToken,
+        'apikey': window.TSUNAMI_SUPABASE_ANON_KEY || '',
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!res.ok) {
+      var errBody = {};
+      try { errBody = await res.json(); } catch (e) {}
+      throw new Error((errBody && errBody.error) || ('Delete failed (' + res.status + ')'));
+    }
+    try {
+      localStorage.removeItem('tsunami_v1');
+      localStorage.removeItem(cardsStorageKey());
+      localStorage.removeItem(vaultKeyStorageKey());
+    } catch (e) {}
+    alert('Your Tsunami account and data have been deleted.');
+    await signOut();
   } catch (e) {
-    console.error('Tsunami: account data delete failed:', e);
+    console.error('Tsunami: account delete failed:', e);
+    alert('Account deletion failed: ' + (e && e.message ? e.message : 'unknown error') + '. Please contact support.');
   }
-  // NOTE: this removes their Tsunami data and signs them out. It does NOT delete their
-  // actual Supabase login (auth.users row) - that requires a service-role server call,
-  // which needs a small serverless function to do safely (never expose that key client-side).
-  alert('Your Tsunami account data has been deleted.');
-  await signOut();
 }
 
 // ===== Backup connections: Google Drive (via Supabase Google OAuth) + Dropbox + email =====
@@ -1782,11 +1831,11 @@ function adoptConnectionTokensForUser(user) {
   } catch (e) {}
 }
 
-function applyRestoredCards(data) {
+async function applyRestoredCards(data) {
   if (!data) throw new Error('Empty backup');
   var restored = Array.isArray(data) ? data : (data.cards || data.card_data);
   if (!Array.isArray(restored) || !restored.length) throw new Error('Backup has no cards');
-  cards = restored;
+  cards = await decryptCardsInMemory(restored);
   saveCards();
   render();
   if (typeof checkAllPromos === 'function') checkAllPromos();
@@ -1912,7 +1961,7 @@ async function backupToGoogleDrive(opts) {
   }
   if (!silent) setBackupMsg('Backing up to Google Drive...', false);
   var filename = 'tsunami-backup-' + new Date().toISOString().slice(0,10) + '.json';
-  var payload = { version: 1, exported_at: new Date().toISOString(), cards: cards };
+  var payload = { version: 1, exported_at: new Date().toISOString(), cards: await encryptCardsForStorage(cards) };
   var fileContent = JSON.stringify(payload, null, 2);
   var metadata = { name: filename, mimeType: 'application/json' };
   var boundary = 'tsunami_backup_boundary';
@@ -1975,7 +2024,7 @@ async function restoreFromGoogleDrive() {
     });
     if (!getRes.ok) throw new Error('download failed (' + getRes.status + ')');
     var data = await getRes.json();
-    applyRestoredCards(data);
+    await applyRestoredCards(data);
     setBackupMsg('Restored from your Google Drive: ' + file.name, false);
   } catch (e) {
     setBackupMsg('Google Drive restore error: ' + e.message, true);
@@ -2049,7 +2098,7 @@ async function backupToDropbox(opts) {
   }
   if (!silent) setBackupMsg('Backing up to Dropbox...', false);
   var filename = '/TsunamiBackups/tsunami-backup-' + new Date().toISOString().slice(0,10) + '.json';
-  var payload = { version: 1, exported_at: new Date().toISOString(), cards: cards };
+  var payload = { version: 1, exported_at: new Date().toISOString(), cards: await encryptCardsForStorage(cards) };
   var fileContent = JSON.stringify(payload, null, 2);
   try {
     var folder = await ensureDropboxBackupFolder(token);
@@ -2143,7 +2192,7 @@ async function restoreFromDropbox() {
     });
     if (!getRes.ok) throw new Error('download failed (' + getRes.status + ')');
     var data = await getRes.json();
-    applyRestoredCards(data);
+    await applyRestoredCards(data);
     setBackupMsg('Restored from Dropbox: ' + file.name, false);
   } catch (e) {
     setBackupMsg('Dropbox restore error: ' + e.message, true);
@@ -3341,37 +3390,29 @@ async function signOut() {
   // restores backup connections without reconnecting.
   await _supabase.auth.signOut();
   currentUser = null;
+  _isAdminCached = false;
   showAuthScreen();
 }
 
 async function checkUnlocked(user) {
+  await refreshAdminFlag(user);
   if (isAdminUser(user)) {
     // Admin always has app access — no promo/paywall required.
-    ensureAdminProfileUnlocked(user);
     return true;
   }
-  var { data } = await _supabase.from('profiles').select('unlocked').eq('id', user.id).single();
+  var { data } = await _supabase.from('profiles').select('unlocked, is_admin').eq('id', user.id).single();
+  if (data && data.is_admin) {
+    _isAdminCached = true;
+    return true;
+  }
   return !!(data && data.unlocked);
 }
 
 async function ensureAdminProfileUnlocked(user) {
-  if (!isAdminUser(user) || !user.id) return;
-  try {
-    var { data } = await _supabase.from('profiles').select('id, unlocked').eq('id', user.id).maybeSingle();
-    if (data && data.unlocked) return;
-    if (data) {
-      await _supabase.from('profiles').update({ unlocked: true, code_used: 'ADMIN' }).eq('id', user.id);
-    } else {
-      await _supabase.from('profiles').insert({
-        id: user.id,
-        email: user.email || ADMIN_EMAIL,
-        unlocked: true,
-        code_used: 'ADMIN'
-      });
-    }
-  } catch (e) {
-    console.error('Tsunami: admin unlock ensure failed:', e);
-  }
+  // Admin status now comes from the profiles.is_admin flag (server-controlled).
+  // We no longer write `unlocked` from the client — a DB trigger blocks that
+  // write path, so just refresh the cached flag instead.
+  await refreshAdminFlag(user);
 }
 
 function showAuthScreen(msg, msgType) {
@@ -3400,8 +3441,8 @@ function showCodeScreen() {
 async function routeAfterSignIn(user) {
   currentUser = user;
   adoptConnectionTokensForUser(user);
+  await refreshAdminFlag(user);
   if (isAdminUser(user)) {
-    await ensureAdminProfileUnlocked(user);
     launchApp();
     return;
   }
@@ -3478,6 +3519,103 @@ async function launchApp(opts) {
   startAutoBackupWatcher();
 }
 
+// ===== Client-side credential encryption (login secrets stay device-encrypted) =====
+// The AES key never leaves this device / localStorage, and never gets sent to the
+// cloud — only the encrypted "ENC1.<iv>.<ciphertext>" string does. That means a new
+// device can't decrypt old secrets (see Settings → Security); re-entering them once
+// re-encrypts locally with that device's own key.
+
+function vaultKeyStorageKey() {
+  return (currentUser && currentUser.id) ? ('tsunami_vault_' + currentUser.id) : 'tsunami_vault_anon';
+}
+
+function _vaultBufToB64(buf) {
+  var bytes = new Uint8Array(buf);
+  var binary = '';
+  for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+function _vaultB64ToBytes(b64) {
+  var binary = atob(b64);
+  var bytes = new Uint8Array(binary.length);
+  for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+function getOrCreateVaultKeyMaterial() {
+  var existing = null;
+  try { existing = localStorage.getItem(vaultKeyStorageKey()); } catch (e) {}
+  if (existing) return existing;
+  var raw = new Uint8Array(32);
+  (window.crypto || window.msCrypto).getRandomValues(raw);
+  var b64 = _vaultBufToB64(raw);
+  try { localStorage.setItem(vaultKeyStorageKey(), b64); } catch (e) {}
+  return b64;
+}
+
+async function importVaultCryptoKey() {
+  var keyBytes = _vaultB64ToBytes(getOrCreateVaultKeyMaterial());
+  return await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+async function encryptCredentialPlain(plainText) {
+  if (plainText == null || plainText === '') return '';
+  if (String(plainText).indexOf('ENC1.') === 0) return String(plainText);
+  try {
+    var key = await importVaultCryptoKey();
+    var iv = new Uint8Array(12);
+    (window.crypto || window.msCrypto).getRandomValues(iv);
+    var encoded = new TextEncoder().encode(String(plainText));
+    var cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, encoded);
+    return 'ENC1.' + _vaultBufToB64(iv) + '.' + _vaultBufToB64(cipherBuf);
+  } catch (e) {
+    console.error('Tsunami: credential encrypt failed:', e);
+    return String(plainText);
+  }
+}
+
+async function decryptCredentialValue(value) {
+  if (!value || typeof value !== 'string' || value.indexOf('ENC1.') !== 0) return value || '';
+  var parts = value.split('.');
+  if (parts.length !== 3) return '';
+  try {
+    var iv = _vaultB64ToBytes(parts[1]);
+    var cipherBytes = _vaultB64ToBytes(parts[2]);
+    var key = await importVaultCryptoKey();
+    var plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, cipherBytes);
+    return new TextDecoder().decode(plainBuf);
+  } catch (e) {
+    // Most likely a different device with a different local vault key.
+    console.error('Tsunami: credential decrypt failed (new device or corrupted key?):', e);
+    return '';
+  }
+}
+
+async function encryptCardsForStorage(list) {
+  var out = [];
+  for (var i = 0; i < (list || []).length; i++) {
+    var c = list[i];
+    var copy = Object.assign({}, c);
+    if (copy.credentials) copy.credentials = await encryptCredentialPlain(copy.credentials);
+    out.push(copy);
+  }
+  return out;
+}
+
+async function decryptCardsInMemory(list) {
+  var out = [];
+  for (var i = 0; i < (list || []).length; i++) {
+    var c = list[i];
+    var copy = Object.assign({}, c);
+    if (copy.credentials && String(copy.credentials).indexOf('ENC1.') === 0) {
+      copy.credentials = await decryptCredentialValue(copy.credentials);
+    }
+    out.push(copy);
+  }
+  return out;
+}
+
 function cardsStorageKey() {
   return (currentUser && currentUser.id) ? ('tsunami_v1_' + currentUser.id) : 'tsunami_v1';
 }
@@ -3500,7 +3638,7 @@ async function loadCardsFromCloud() {
   try {
     var { data } = await _supabase.from('cards').select('card_data').eq('user_id', currentUser.id).single();
     if (data && data.card_data && data.card_data.length) {
-      cards = data.card_data;
+      cards = await decryptCardsInMemory(data.card_data);
       try { localStorage.setItem(cardsStorageKey(), JSON.stringify(cards)); } catch (e) {}
       return;
     }
@@ -3538,9 +3676,10 @@ function offerBlankStarterCsvOnce() {
 async function saveCardsToCloud() {
   if (!currentUser) return;
   try {
+    var encryptedCards = await encryptCardsForStorage(cards);
     var { data: updated, error: updateError } = await _supabase
       .from('cards')
-      .update({ card_data: cards, updated_at: new Date().toISOString() })
+      .update({ card_data: encryptedCards, updated_at: new Date().toISOString() })
       .eq('user_id', currentUser.id)
       .select();
     if (updateError) console.error('Tsunami cloud save failed (update):', updateError);
@@ -3548,12 +3687,14 @@ async function saveCardsToCloud() {
       // No row existed to update - create one instead
       var { error: insertError } = await _supabase
         .from('cards')
-        .insert({ user_id: currentUser.id, card_data: cards });
+        .insert({ user_id: currentUser.id, card_data: encryptedCards });
       if (insertError) console.error('Tsunami cloud save failed (insert):', insertError);
     }
   } catch(e) {
     console.error('Tsunami cloud save exception:', e);
   }
+  // Plaintext cards stay in memory/localStorage on this device — only the
+  // cloud copy is encrypted.
   try { localStorage.setItem(cardsStorageKey(), JSON.stringify(cards)); } catch(e) {}
 }
 
@@ -4590,7 +4731,9 @@ function csvEscape(val) {
   return '"' + String(val == null ? '' : val).replace(/"/g, '""') + '"';
 }
 
-function cardsToCsvText(list) {
+function cardsToCsvText(list, opts) {
+  opts = opts || {};
+  var includeSecrets = !!opts.includeSecrets;
   var active = (list || []).filter(function(c){ return !c.empty; });
   var headers = ["Name","Balance","Limit","Monthly","Interest","Tsunami","Due","Credentials","PromoOn","PromoMonths","PromoApr","PromoWarn"];
   var rows = active.map(function(c){
@@ -4599,7 +4742,7 @@ function cardsToCsvText(list) {
       c.balance || 0, c.limit || 0, c.minPayment || 0,
       c.interest || 0, c.tsunami || 0,
       csvEscape(c.due || ''),
-      csvEscape(c.credentials || ''),
+      csvEscape(includeSecrets ? (c.credentials || '') : ''),
       c.promoOn ? 1 : 0,
       c.promoMonths || 0,
       c.promoApr || 0,
@@ -4625,9 +4768,13 @@ function downloadTextFile(filename, text) {
 
 function downloadCardsCsv() {
   var stamp = new Date().toISOString().slice(0, 10);
-  downloadTextFile('Tsunami-cards-' + stamp + '.csv', cardsToCsvText(cards));
+  var includeSecrets = !!window._csvIncludeSecrets;
+  if (includeSecrets) {
+    includeSecrets = confirm('This CSV will include your saved login usernames/passwords in plain text. Only continue if you will keep this file somewhere safe. Continue?');
+  }
+  downloadTextFile('Tsunami-cards-' + stamp + '.csv', cardsToCsvText(cards, { includeSecrets: includeSecrets }));
   var msg = document.getElementById('import-msg');
-  if (msg) msg.textContent = 'CSV downloaded.';
+  if (msg) msg.textContent = includeSecrets ? 'CSV downloaded (includes login secrets).' : 'CSV downloaded.';
 }
 
 function downloadBlankTemplateCsv() {
@@ -4635,7 +4782,7 @@ function downloadBlankTemplateCsv() {
 }
 
 function exportCSV() {
-  var csv = cardsToCsvText(cards);
+  var csv = cardsToCsvText(cards, { includeSecrets: false });
   var savedEmail = localStorage.getItem("tsunami_email")||"";
 
   var overlay = document.createElement("div");

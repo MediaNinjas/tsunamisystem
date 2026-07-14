@@ -75,11 +75,12 @@ Deno.serve(async (req) => {
         type: "paid",
       });
 
-      // Unlock their account
-      await supabaseAdmin
-        .from("profiles")
-        .update({ unlocked: true, code_used: code })
-        .eq("id", userId);
+      // Unlock their account via security-definer RPC (respects privileged trigger)
+      const { error: unlockErr } = await supabaseAdmin.rpc("service_unlock_profile", {
+        p_user_id: userId,
+        p_code: code,
+      });
+      if (unlockErr) throw unlockErr;
 
       const affiliateRef = (session.metadata && session.metadata.affiliate_ref) || null;
       if (affiliateRef) {
