@@ -650,7 +650,8 @@ async function handleAuth() {
 // PayPal: developer.paypal.com → Apps → Client ID (Live)
 // Google: console.cloud.google.com → OAuth Web client (authorized JS origins = tsunamiapp.medianinjas.tv)
 // Dropbox: dropbox.com/developers/apps → App key (OAuth 2 redirect = https://tsunamiapp.medianinjas.tv/)
-// Enable scopes: files.content.write/read + files.metadata.write/read (Permissions tab), then reconnect.
+// Permissions tab: enable files.content.write/read + files.metadata.write/read, then Submit.
+// Connect without &scope= so Dropbox grants whatever is enabled on the app.
 var TSUNAMI_PRICE_USD = '20.00';
 var TSUNAMI_PAYPAL_CLIENT_ID = '';
 var GOOGLE_DRIVE_CLIENT_ID = '634001206199-cd5irrg9t7fn9p8ni1i8gf8f79gtt3lr.apps.googleusercontent.com';
@@ -1566,20 +1567,15 @@ function connectDropbox() {
     return;
   }
   var redirectUri = window.location.origin + '/';
-  // Scoped Dropbox apps need these on the authorize URL or upload returns 400.
-  var scopes = [
-    'files.content.write',
-    'files.content.read',
-    'files.metadata.write',
-    'files.metadata.read'
-  ].join(' ');
+  // Do NOT pass &scope= here. Dropbox will grant whatever scopes are enabled
+  // on the app (Permissions tab). Requesting scopes that aren't enabled returns:
+  // "No scope requested can be granted for this app."
   var authUrl = 'https://www.dropbox.com/oauth2/authorize' +
     '?client_id=' + encodeURIComponent(DROPBOX_APP_KEY) +
     '&response_type=token' +
     '&redirect_uri=' + encodeURIComponent(redirectUri) +
-    '&scope=' + encodeURIComponent(scopes) +
     '&state=tsunami_dropbox';
-  setBackupMsg('Opening Dropbox… approve file access, then try Backup again.', false);
+  setBackupMsg('Opening Dropbox…', false);
   window.location.href = authUrl;
 }
 
