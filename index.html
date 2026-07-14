@@ -101,11 +101,14 @@ input.tright.dark-input:focus { background:rgba(255,255,255,0.2); border-color:r
 .settings-acc > summary::marker { content:''; }
 .settings-acc-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
 .settings-acc-label { font-family:'Bebas Neue',sans-serif; font-size:14px; letter-spacing:0.15em; color:#ccc; }
-.settings-acc-chevron { color:#666; font-size:11px; transition:transform 0.15s ease; flex-shrink:0; }
-.settings-acc[open] > summary .settings-acc-chevron { transform:rotate(90deg); color:#999; }
+.settings-acc-chevron {
+  color:#33cc66; font-size:28px; line-height:0.85; font-weight:700;
+  transition:transform 0.15s ease; flex-shrink:0; width:1.1em; text-align:center;
+}
+.settings-acc[open] > summary .settings-acc-chevron { transform:rotate(90deg); color:#55ee88; }
 .settings-acc-meta {
   font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace;
-  font-size:10px; line-height:1.4; color:#7a8a98; letter-spacing:0.02em;
+  font-size:11px; line-height:1.45; color:#33cc66; letter-spacing:0.02em;
   white-space:normal; word-break:break-word;
 }
 .settings-acc[open] > summary .settings-acc-meta { display:none; }
@@ -600,7 +603,7 @@ input[type="date"] { color-scheme: dark; }
           </summary>
           <div class="settings-acc-body">
             <div class="settings-acc-panel">
-              <div style="color:#ccc;font-size:12px;line-height:1.4;">Review applications, run quick AI research, approve/deny, or add people manually. Payouts are manual ($5/sale, $25 threshold). Affiliates connect PayPal / Venmo / Cash App handles — not bank OAuth.</div>
+              <div style="color:#ccc;font-size:12px;line-height:1.4;">Review applications with <b style="color:#33cc66;">AI Approve</b> — it researches their site/social proof and decides approve, deny, or pending. You can still override manually. Payouts are manual ($5/sale, $25 threshold).</div>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
                 <button class="acct-menu-item aff-filter-btn active" data-aff-filter="pending" style="padding:5px 10px;font-size:11px;" onclick="setAdminAffiliateFilter('pending')">Pending</button>
                 <button class="acct-menu-item aff-filter-btn" data-aff-filter="approved" style="padding:5px 10px;font-size:11px;" onclick="setAdminAffiliateFilter('approved')">Approved</button>
@@ -2588,8 +2591,8 @@ function renderAdminAffiliateList() {
         (ready ? ' <span style="color:#33cc66;">· ready to pay</span>' : '') +
       '</div>' +
       '<div style="display:flex;flex-wrap:wrap;gap:6px;">' +
-        '<button type="button" class="acct-menu-item" style="padding:5px 8px;font-size:11px;" onclick="adminRunAffiliateAi(\'' + id + '\')">AI research</button>' +
-        '<button type="button" class="acct-menu-item" style="padding:5px 8px;font-size:11px;color:#33cc66;" onclick="adminSetAffiliateStatus(\'' + id + '\',\'approved\')">Approve</button>' +
+        '<button type="button" class="acct-menu-item" style="padding:6px 10px;font-size:11px;color:#33cc66;border-color:rgba(51,204,102,0.45);" onclick="adminRunAffiliateAi(\'' + id + '\')">AI Approve</button>' +
+        '<button type="button" class="acct-menu-item" style="padding:5px 8px;font-size:11px;color:#33cc66;" onclick="adminSetAffiliateStatus(\'' + id + '\',\'approved\')">Manual Approve</button>' +
         '<button type="button" class="acct-menu-item" style="padding:5px 8px;font-size:11px;color:#ffcc66;" onclick="adminSetAffiliateStatus(\'' + id + '\',\'pending\')">Pending</button>' +
         '<button type="button" class="acct-menu-item danger" style="padding:5px 8px;font-size:11px;" onclick="adminSetAffiliateStatus(\'' + id + '\',\'denied\')">Deny</button>' +
         (owedCents > 0 ? '<button type="button" class="acct-menu-item" style="padding:5px 8px;font-size:11px;" onclick="adminRecordAffiliatePayout(\'' + id + '\')">Record payout</button>' : '') +
@@ -2598,7 +2601,7 @@ function renderAdminAffiliateList() {
   }).join('');
 }
 
-/** Lightweight screen of traffic proof — no OpenAI key required. Upgrade later with an edge LLM. */
+/** Screens traffic proof and returns approve | deny | pending. */
 function runAffiliateQuickResearch(row) {
   var score = 0;
   var notes = [];
@@ -2636,18 +2639,23 @@ function runAffiliateQuickResearch(row) {
   }
 
   if (!row.payout_paypal && !row.payout_venmo && !row.payout_cashapp) {
-    notes.push('No payout method connected.');
+    notes.push('No payout method connected — prefer pending until payout is set.');
+    score = Math.min(score, 3);
   }
 
   var verdict = 'pending';
-  if (score >= 5 && (site || channels)) verdict = 'approve';
-  else if (score <= 1) verdict = 'deny';
-  else verdict = 'pending';
+  if (score >= 5 && (site || channels) && (row.payout_paypal || row.payout_venmo || row.payout_cashapp)) {
+    verdict = 'approve';
+  } else if (score <= 1) {
+    verdict = 'deny';
+  } else {
+    verdict = 'pending';
+  }
 
   var why = '';
-  if (verdict === 'approve') why = 'Looks like a real distributor with enough proof to try.';
-  else if (verdict === 'deny') why = 'Too little distribution proof — likely not worth a code yet.';
-  else why = 'Partial info — leave pending until links/traffic are clearer.';
+  if (verdict === 'approve') why = 'Approve: real distributor signals + payout on file.';
+  else if (verdict === 'deny') why = 'Deny: too little distribution proof.';
+  else why = 'Pending: partial info — need clearer links, traffic, or payout.';
 
   return {
     verdict: verdict,
@@ -2659,19 +2667,33 @@ async function adminRunAffiliateAi(id) {
   if (!isAdminUser(currentUser)) return;
   var row = (_adminAffiliateRows || []).find(function(r) { return r.id === id; });
   if (!row) return;
-  setAdminAffiliateMsg('Running quick research…', false);
+  setAdminAffiliateMsg('AI Approve: researching…', false);
   try {
     var result = runAffiliateQuickResearch(row);
-    var { error } = await _supabase.rpc('admin_set_affiliate_ai', {
+    var statusMap = { approve: 'approved', deny: 'denied', pending: 'pending' };
+    var newStatus = statusMap[result.verdict] || 'pending';
+
+    var aiRes = await _supabase.rpc('admin_set_affiliate_ai', {
       p_id: id,
       p_verdict: result.verdict,
       p_summary: result.summary
     });
-    if (error) throw error;
-    setAdminAffiliateMsg('AI: ' + result.verdict + ' — ' + result.summary, false);
+    if (aiRes.error) throw aiRes.error;
+
+    // AI makes the decision — apply approve / deny / pending (approve mints their code).
+    var stRes = await _supabase.rpc('admin_set_affiliate_status', {
+      p_id: id,
+      p_status: newStatus
+    });
+    if (stRes.error) throw stRes.error;
+
+    setAdminAffiliateMsg(
+      'AI decided: ' + newStatus.toUpperCase() + ' — ' + result.summary,
+      newStatus === 'denied'
+    );
     await loadAdminAffiliates();
   } catch (e) {
-    setAdminAffiliateMsg(e.message || 'Research failed', true);
+    setAdminAffiliateMsg(e.message || 'AI Approve failed', true);
   }
 }
 
