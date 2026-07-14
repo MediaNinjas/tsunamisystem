@@ -81,6 +81,18 @@ Deno.serve(async (req) => {
         .update({ unlocked: true, code_used: code })
         .eq("id", userId);
 
+      const affiliateRef = (session.metadata && session.metadata.affiliate_ref) || null;
+      if (affiliateRef) {
+        const { error: affErr } = await supabaseAdmin.rpc("attribute_paid_sale", {
+          p_buyer_id: userId,
+          p_ref: affiliateRef,
+          p_stripe_session: session.id,
+          p_sale_cents: 2000,
+        });
+        if (affErr) console.error("Affiliate attribution failed:", affErr);
+        else console.log(`Attributed sale to affiliate ref ${affiliateRef} for buyer ${userId}`);
+      }
+
       console.log(`Unlocked user ${userId} via Stripe session ${session.id}`);
     } catch (err) {
       console.error("Failed to unlock user after Stripe payment:", err);

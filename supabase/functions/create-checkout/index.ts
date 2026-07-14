@@ -73,6 +73,11 @@ Deno.serve(async (req) => {
       });
     }
 
+    const body = await req.json().catch(() => ({} as Record<string, unknown>));
+    const affiliateRef = typeof body.affiliate_ref === "string"
+      ? body.affiliate_ref.trim().toUpperCase()
+      : "";
+
     const siteUrl = resolveSiteUrl(Deno.env.get("SITE_URL"));
 
     const session = await stripe.checkout.sessions.create({
@@ -89,6 +94,7 @@ Deno.serve(async (req) => {
       // Pass the user's id through so the webhook knows who paid
       client_reference_id: user.id,
       customer_email: user.email,
+      metadata: affiliateRef ? { affiliate_ref: affiliateRef } : undefined,
       success_url: `${siteUrl}/?stripe_success=1#cards`,
       cancel_url: `${siteUrl}/?stripe_cancel=1`,
     });
