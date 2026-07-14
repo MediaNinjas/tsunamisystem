@@ -1023,17 +1023,22 @@ async function generateAdminCode(presetUses) {
     }
   }
 
-  var code = makePromoCode();
   try {
-    var { error } = await _supabase.from('codes').insert({
-      code: code,
-      used: false,
-      max_uses: maxUses,
-      use_count: 0
-    });
+    var { data: code, error } = await _supabase.rpc('admin_create_promo_code', { p_max_uses: maxUses });
     if (error) {
-      alert('Failed to generate code: ' + error.message + '\n\nIf it mentions max_uses, run the multi-use SQL migration in Supabase first.');
-      return;
+      // Fallback: direct insert (needs RLS policy allowing admin)
+      var fallback = makePromoCode();
+      var ins = await _supabase.from('codes').insert({
+        code: fallback,
+        used: false,
+        max_uses: maxUses,
+        use_count: 0
+      });
+      if (ins.error) {
+        alert('Failed to generate code: ' + (error.message || ins.error.message) + '\n\nRun the codes RLS SQL in Supabase (admin_create_promo_code).');
+        return;
+      }
+      code = fallback;
     }
     var label = maxUses === 1 ? 'single-use' : (maxUses + '-use');
     window.prompt('New ' + label + ' code created. Copy it now:', code);
