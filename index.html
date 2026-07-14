@@ -1877,11 +1877,6 @@ async function loadAdminPromoCodes() {
           '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:16px;letter-spacing:0.1em;color:#fff;word-break:break-all;">' + escHtml(row.code) + '</div>' +
           '<div style="font-size:11px;color:' + statusColor + ';">' + statusText + '</div>' +
         '</div>' +
-      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 10px;">' +
-        '<div style="min-width:0;text-align:left;">' +
-          '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:16px;letter-spacing:0.1em;color:#fff;word-break:break-all;">' + escHtml(row.code) + '</div>' +
-          '<div style="font-size:11px;color:' + statusColor + ';">' + statusText + '</div>' +
-        '</div>' +
         '<div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">' +
           '<button type="button" class="acct-menu-item danger" title="Delete code" style="padding:4px 8px;font-size:14px;width:auto;line-height:1;" onclick="deleteAdminPromoCode(\'' + codeJs + '\')">×</button>' +
           '<button type="button" class="acct-menu-item" style="padding:4px 8px;font-size:11px;width:auto;" onclick="copyPromoCodeValue(\'' + codeJs + '\')">Copy</button>' +
