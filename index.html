@@ -717,8 +717,7 @@ function initPaypalButton() {
             paypal_order_id: order.id, max_uses: 1, use_count: 1, type: 'paid'
           });
           if (ins.error) throw ins.error;
-          var up = await _supabase.from('profiles').update({ unlocked: true, code_used: code }).eq('id', currentUser.id);
-          if (up.error) throw up.error;
+          await unlockProfileWithCode(code);
           setTimeout(function(){ launchApp({ forceCards: true }); }, 800);
         } catch (e) {
           console.error('Tsunami: PayPal unlock save failed:', e);
@@ -1089,9 +1088,43 @@ async function redeemValidatedCode(code, data, maxUses, useCount) {
     return;
   }
 
-  await _supabase.from('profiles').update({ unlocked: true, code_used: code }).eq('id', currentUser.id);
+  try {
+    await unlockProfileWithCode(code);
+    try { localStorage.setItem('tsunami_last_code', code); } catch (e) {}
+  } catch (e) {
+    console.error('Tsunami: unlock save failed:', e);
+    setCodeMsg('Code accepted but unlock did not save. Try again or contact support.', 'error');
+    return;
+  }
   setCodeMsg('Unlocked — welcome aboard the first wave!', 'success');
   setTimeout(function(){ launchApp(); }, 800);
+}
+
+async function unlockProfileWithCode(code) {
+  if (!currentUser || !currentUser.id) throw new Error('Not signed in');
+  var patch = { unlocked: true, code_used: code };
+  if (currentUser.email) patch.email = currentUser.email;
+
+  var { data: updated, error: updateError } = await _supabase
+    .from('profiles')
+    .update(patch)
+    .eq('id', currentUser.id)
+    .select('id, unlocked, code_used');
+  if (updateError) throw updateError;
+  if (updated && updated.length && updated[0].unlocked) return updated[0];
+
+  // No row yet — create one (update alone would look unlocked once, then "forget" forever)
+  var insertRow = { id: currentUser.id, unlocked: true, code_used: code };
+  if (currentUser.email) insertRow.email = currentUser.email;
+  var { data: inserted, error: insertError } = await _supabase
+    .from('profiles')
+    .insert(insertRow)
+    .select('id, unlocked, code_used');
+  if (insertError) throw insertError;
+  if (!inserted || !inserted.length || !inserted[0].unlocked) {
+    throw new Error('Profile unlock did not persist');
+  }
+  return inserted[0];
 }
 
 async function signInWithGoogle() {
@@ -1922,6 +1955,11 @@ function showCodeScreen() {
   document.getElementById('code-screen').style.display = 'flex';
   var appContent = document.getElementById('app-content');
   if (appContent) appContent.style.display = 'none';
+  try {
+    var last = localStorage.getItem('tsunami_last_code');
+    var input = document.getElementById('code-input');
+    if (last && input && !input.value) input.value = last;
+  } catch (e) {}
   setTimeout(initPaypalButton, 100);
 }
 
