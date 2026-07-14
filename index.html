@@ -128,7 +128,7 @@ input.tright.dark-input:focus { background:rgba(255,255,255,0.2); border-color:r
   border:1px solid rgba(255,255,255,0.08); border-radius:8px; background:rgba(0,0,0,0.22);
   overflow:hidden; flex-shrink:0; width:100%; box-sizing:border-box;
 }
-.settings-acc-sub + .settings-acc-sub { margin-top:0; }
+.settings-acc-sub + .settings-acc-sub { margin-top:8px; }
 .settings-acc-sub > summary {
   list-style:none; cursor:pointer; display:flex; flex-direction:column; gap:2px;
   padding:10px 12px; user-select:none; -webkit-user-select:none;
@@ -489,7 +489,7 @@ input[type="date"] { color-scheme: dark; }
       <details class="settings-acc" id="acc-account">
         <summary>
           <div class="settings-acc-head">
-            <span class="settings-acc-label">CONNECTED ACCOUNT</span>
+            <span class="settings-acc-label">CONNECTED CLOUD ACCOUNT</span>
             <span class="settings-acc-chevron">›</span>
           </div>
           <div class="settings-acc-meta" id="acc-sum-account">loading…</div>
@@ -502,25 +502,6 @@ input[type="date"] { color-scheme: dark; }
               <div id="settings-email" style="color:#fff;font-size:14px;">—</div>
               <div id="settings-provider" style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">—</div>
             </div>
-          </div>
-        </div>
-      </details>
-
-      <details class="settings-acc" id="acc-security">
-        <summary>
-          <div class="settings-acc-head">
-            <span class="settings-acc-label">SECURITY</span>
-            <span class="settings-acc-chevron">›</span>
-          </div>
-          <div class="settings-acc-meta" id="acc-sum-security">your data, protected</div>
-        </summary>
-        <div class="settings-acc-body">
-          <div class="settings-acc-panel" style="color:#fff;font-size:13px;line-height:1.5;">
-            <div>🔒 Your card data is private to your account — locked down by database rules so no other user can ever see it.</div>
-            <div>🔑 Login usernames/passwords you store are encrypted on your device before they're sent to the cloud. We can't read them, and neither can anyone who might access the database.</div>
-            <div>📄 CSV exports leave out saved login secrets by default — you have to opt in if you want them included.</div>
-            <div>🧹 Want a clean wipe? Import a blank CSV to clear your cards. There's no "reset everything" button, so this is the intentional way to start fresh.</div>
-            <div>📱 New device tip: your encryption key lives on this device, so previously-saved login secrets won't decrypt on a new one. Just re-enter them once and they'll re-encrypt locally.</div>
           </div>
         </div>
       </details>
@@ -599,55 +580,72 @@ input[type="date"] { color-scheme: dark; }
         </div>
       </details>
 
-      <div id="settings-admin-section" style="display:none;">
-        <details class="settings-acc" id="acc-admin-codes">
-          <summary>
-            <div class="settings-acc-head">
-              <span class="settings-acc-label">ADMIN — PROMO CODES</span>
-              <span class="settings-acc-chevron">›</span>
-            </div>
-            <div class="settings-acc-meta" id="acc-sum-admin-codes">loading…</div>
-          </summary>
-          <div class="settings-acc-body">
-            <div class="settings-acc-panel">
-              <div style="color:#ccc;font-size:12px;line-height:1.4;">Create unlock codes for customers. Leave code blank to auto-generate, or type your own (e.g. EARLY500).</div>
-              <div>
-                <div style="font-size:10px;color:#999;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Custom code (optional)</div>
-                <input id="admin-code-custom" type="text" maxlength="32" placeholder="Blank = random TSU-XXXX-XXXX" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;">
-              </div>
-              <div>
-                <div style="font-size:11px;color:#fff;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;font-weight:600;">Max uses</div>
-                <div style="display:flex;gap:8px;align-items:center;">
-                  <input id="admin-code-uses" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="7" size="8" value="1" autocomplete="off" placeholder="1–1000000" style="flex:1;min-width:10ch;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:#fff;-webkit-text-fill-color:#fff;caret-color:#fff;padding:10px 12px;font-size:16px;font-family:'DM Sans',sans-serif;outline:none;color-scheme:dark;letter-spacing:0.04em;">
-                  <button class="acct-menu-item" style="padding:10px 14px;font-size:12px;white-space:nowrap;flex-shrink:0;" onclick="generateAdminCodeFromSettings()">Create code</button>
-                </div>
-              </div>
-              <button class="auth-btn" style="margin:0;padding:10px;font-size:14px;" onclick="generateAdminCode(500)">Create 500-Use Code</button>
-              <div id="admin-code-result" style="display:none;background:rgba(0,0,0,0.35);border:1px solid rgba(51,204,102,0.35);border-radius:8px;padding:10px;">
-                <div style="font-size:11px;color:#999;margin-bottom:4px;" id="admin-code-label">New code</div>
-                <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.12em;color:#33cc66;word-break:break-all;" id="admin-code-value"></div>
-                <button class="acct-menu-item" style="margin-top:8px;padding:6px 10px;font-size:12px;" onclick="copyAdminCode()">Copy code</button>
-              </div>
-              <div>
-                <div style="font-size:10px;color:#999;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;">Your promo codes</div>
-                <div id="admin-code-list" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto;"></div>
-              </div>
-              <div id="admin-code-msg" style="font-size:11px;color:#999;min-height:14px;"></div>
-            </div>
+      <details class="settings-acc" id="acc-security">
+        <summary>
+          <div class="settings-acc-head">
+            <span class="settings-acc-label">SECURITY</span>
+            <span class="settings-acc-chevron">›</span>
           </div>
-        </details>
+          <div class="settings-acc-meta" id="acc-sum-security">your data, protected</div>
+        </summary>
+        <div class="settings-acc-body">
+          <div class="settings-acc-panel" style="color:#fff;font-size:13px;line-height:1.5;">
+            <div>Your card data is private to your account — locked down by database rules so no other user can see it.</div>
+            <div>Login usernames/passwords you store are encrypted on your device before they are sent to the cloud. We can't read them, and neither can anyone who might access the database.</div>
+            <div>CSV exports leave out saved login secrets by default — you have to opt in if you want them included.</div>
+            <div>Want a clean wipe? Import a blank CSV to clear your cards. There is no reset button, so this is the intentional way to start fresh.</div>
+            <div>New device tip: your encryption key lives on this device, so previously-saved login secrets won't decrypt on a new one. Re-enter them once and they re-encrypt locally.</div>
+          </div>
+        </div>
+      </details>
 
-        <details class="settings-acc" id="acc-admin-affiliates">
+      <div id="settings-admin-section" style="display:none;">
+        <details class="settings-acc" id="acc-admin">
           <summary>
             <div class="settings-acc-head">
-              <span class="settings-acc-label">ADMIN — AFFILIATES</span>
+              <span class="settings-acc-label">ADMIN</span>
               <span class="settings-acc-chevron">›</span>
             </div>
-            <div class="settings-acc-meta" id="acc-sum-admin-affiliates">loading…</div>
+            <div class="settings-acc-meta" id="acc-sum-admin">codes · affiliates · payouts</div>
           </summary>
           <div class="settings-acc-body">
             <div class="settings-acc-panel">
               <details class="settings-acc-sub" open>
+                <summary>
+                  <div class="settings-acc-head">
+                    <span class="settings-acc-label">PROMO CODES</span>
+                    <span class="settings-acc-chevron">›</span>
+                  </div>
+                  <div class="settings-acc-meta" id="acc-sum-admin-codes">loading…</div>
+                </summary>
+                <div class="settings-acc-body">
+                  <div style="color:#ccc;font-size:12px;line-height:1.4;">Create unlock codes for customers. Leave code blank to auto-generate, or type your own (e.g. EARLY500).</div>
+                  <div>
+                    <div style="font-size:10px;color:#999;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Custom code (optional)</div>
+                    <input id="admin-code-custom" type="text" maxlength="32" placeholder="Blank = random TSU-XXXX-XXXX" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;">
+                  </div>
+                  <div>
+                    <div style="font-size:11px;color:#fff;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;font-weight:600;">Max uses</div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                      <input id="admin-code-uses" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="7" size="8" value="1" autocomplete="off" placeholder="1–1000000" style="flex:1;min-width:10ch;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:#fff;-webkit-text-fill-color:#fff;caret-color:#fff;padding:10px 12px;font-size:16px;font-family:'DM Sans',sans-serif;outline:none;color-scheme:dark;letter-spacing:0.04em;">
+                      <button class="acct-menu-item" style="padding:10px 14px;font-size:12px;white-space:nowrap;flex-shrink:0;" onclick="generateAdminCodeFromSettings()">Create code</button>
+                    </div>
+                  </div>
+                  <button class="auth-btn" style="margin:0;padding:10px;font-size:14px;" onclick="generateAdminCode(500)">Create 500-Use Code</button>
+                  <div id="admin-code-result" style="display:none;background:rgba(0,0,0,0.35);border:1px solid rgba(51,204,102,0.35);border-radius:8px;padding:10px;">
+                    <div style="font-size:11px;color:#999;margin-bottom:4px;" id="admin-code-label">New code</div>
+                    <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.12em;color:#33cc66;word-break:break-all;" id="admin-code-value"></div>
+                    <button class="acct-menu-item" style="margin-top:8px;padding:6px 10px;font-size:12px;" onclick="copyAdminCode()">Copy code</button>
+                  </div>
+                  <div>
+                    <div style="font-size:10px;color:#999;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;">Your promo codes</div>
+                    <div id="admin-code-list" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto;"></div>
+                  </div>
+                  <div id="admin-code-msg" style="font-size:11px;color:#999;min-height:14px;"></div>
+                </div>
+              </details>
+
+              <details class="settings-acc-sub">
                 <summary>
                   <div class="settings-acc-head">
                     <span class="settings-acc-label">RATES</span>
@@ -1467,6 +1465,17 @@ async function openSettings() {
 function setSettingsAccMeta(id, text) {
   var el = document.getElementById(id);
   if (el) el.textContent = text || '—';
+}
+
+function updateAdminAccordionSummary() {
+  var codesEl = document.getElementById('acc-sum-admin-codes');
+  var appsEl = document.getElementById('acc-sum-aff-apps');
+  var payEl = document.getElementById('acc-sum-aff-payouts');
+  var bits = [];
+  if (codesEl && codesEl.textContent && codesEl.textContent !== 'loading…') bits.push(codesEl.textContent);
+  if (appsEl && appsEl.textContent) bits.push(appsEl.textContent);
+  if (payEl && payEl.textContent) bits.push(payEl.textContent);
+  setSettingsAccMeta('acc-sum-admin', bits.length ? bits.join('  ·  ') : 'codes · affiliates · payouts');
 }
 
 function refreshSettingsAccordionSummaries() {
@@ -2297,6 +2306,7 @@ async function loadAdminPromoCodes() {
     if (!data || !data.length) {
       list.innerHTML = '<div style="font-size:11px;color:#999;">No promo codes yet.</div>';
       setSettingsAccMeta('acc-sum-admin-codes', 'No promo codes yet');
+      updateAdminAccordionSummary();
       return;
     }
     var active = 0;
@@ -2312,6 +2322,7 @@ async function loadAdminPromoCodes() {
       'acc-sum-admin-codes',
       data.length + ' codes  ·  ' + active + ' active  ·  ' + names.join('  ·  ')
     );
+    updateAdminAccordionSummary();
     list.innerHTML = data.map(function(row) {
       var maxUses = (typeof row.max_uses === 'number' && row.max_uses > 0) ? row.max_uses : 1;
       var useCount = (typeof row.use_count === 'number' && row.use_count >= 0) ? row.use_count : 0;
@@ -3106,19 +3117,20 @@ async function loadAdminAffiliates() {
       if (_adminAffiliateReady[r.id]) readyCount++;
     });
     setSettingsAccMeta(
-      'acc-sum-admin-affiliates',
+      'acc-sum-admin',
       pending + ' pending  ·  ' + approved + ' approved  ·  ' + readyCount + ' ready  ·  ' + moneyFromCents(owedTotal)
     );
     setSettingsAccMeta('acc-sum-aff-apps', pending + ' pending  ·  ' + approved + ' approved  ·  ' + denied + ' denied');
     setSettingsAccMeta('acc-sum-aff-rates', 'standard $' + AFFILIATE_COMMISSION_DOLLARS + '/sale');
     setSettingsAccMeta('acc-sum-aff-payouts', readyCount + ' ready  ·  threshold $' + AFFILIATE_PAYOUT_THRESHOLD);
+    updateAdminAccordionSummary();
     renderAdminPayoutQueue();
     await loadAffiliatePayoutControls();
     await loadAdminPayoutStatements();
   } catch (e) {
     console.error('Tsunami: loadAdminAffiliates failed:', e);
     list.innerHTML = '<div style="font-size:11px;color:#ff8888;">Could not load affiliates. Run the affiliates SQL migration in Supabase if tables are missing.</div>';
-    setSettingsAccMeta('acc-sum-admin-affiliates', 'Could not load affiliates');
+    setSettingsAccMeta('acc-sum-admin', 'Could not load affiliates');
   }
 }
 
