@@ -768,7 +768,12 @@ async function signInWithGoogle() {
   const { error } = await _supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: TSUNAMI_SITE_URL
+      redirectTo: TSUNAMI_SITE_URL,
+      scopes: 'email profile https://www.googleapis.com/auth/drive.file',
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent'
+      }
     }
   });
   if (error) setAuthMsg(error.message, 'error');
@@ -866,17 +871,40 @@ async function finalizeDeleteAccount() {
   await signOut();
 }
 
-// ===== Backup connections: Google Drive + Dropbox + email =====
-var gdriveTokenClient = null;
+// ===== Backup connections: Google Drive (via Supabase Google OAuth) + Dropbox + email =====
+var GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+
+function cacheDriveTokenFromSession(session) {
+  if (!session || !session.provider_token) return;
+  try {
+    localStorage.setItem('tsunami_gdrive_token', JSON.stringify({
+      token: session.provider_token,
+      refresh: session.provider_refresh_token || null,
+      expires: Date.now() + (50 * 60 * 1000)
+    }));
+  } catch(e) {}
+}
 
 function getGdriveToken() {
   try {
     var raw = localStorage.getItem('tsunami_gdrive_token');
-    if (!raw) return null;
-    var parsed = JSON.parse(raw);
-    if (parsed.expires > Date.now()) return parsed.token;
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      if (parsed.token && parsed.expires > Date.now()) return parsed.token;
+    }
   } catch(e) {}
   return null;
+}
+
+async function refreshGdriveTokenFromSession() {
+  try {
+    var { data } = await _supabase.auth.getSession();
+    if (data && data.session && data.session.provider_token) {
+      cacheDriveTokenFromSession(data.session);
+      return data.session.provider_token;
+    }
+  } catch(e) {}
+  return getGdriveToken();
 }
 
 function getDropboxToken() {
@@ -901,11 +929,7 @@ function updateBackupUI() {
   if (!gStatus) return;
 
   var gToken = getGdriveToken();
-  if (!isConfigured(GOOGLE_DRIVE_CLIENT_ID)) {
-    gStatus.textContent = 'Needs setup';
-    gStatus.style.color = '#ffaa66';
-    gActions.innerHTML = '<span style="font-size:11px;color:#999;">Add Google client ID</span>';
-  } else if (gToken) {
+  if (gToken) {
     gStatus.textContent = 'Connected';
     gStatus.style.color = '#33cc66';
     gActions.innerHTML =
@@ -937,46 +961,33 @@ function updateBackupUI() {
   }
 }
 
-function connectGoogleDrive() {
-  if (!isConfigured(GOOGLE_DRIVE_CLIENT_ID)) {
-    setBackupMsg('Google Drive Client ID is not configured yet.', true);
-    return;
-  }
-  if (typeof google === 'undefined' || !google.accounts) {
-    setBackupMsg('Google sign-in library did not load - check your connection and try again.', true);
-    return;
-  }
-  gdriveTokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_DRIVE_CLIENT_ID,
-    scope: 'https://www.googleapis.com/auth/drive.file',
-    callback: function(resp) {
-      if (resp && resp.access_token) {
-        try {
-          localStorage.setItem('tsunami_gdrive_token', JSON.stringify({
-            token: resp.access_token,
-            expires: Date.now() + ((resp.expires_in || 3600) * 1000) - 60000
-          }));
-        } catch(e) {}
-        setBackupMsg('Google Drive connected.', false);
-        updateBackupUI();
-      } else {
-        setBackupMsg('Google Drive connection failed' + (resp && resp.error ? (': ' + resp.error) : '.'), true);
+async function connectGoogleDrive() {
+  // Per-user Drive: add drive.file to Google OAuth via Supabase (not a service account).
+  setBackupMsg('Opening Google to allow Drive access...', false);
+  const { error } = await _supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: TSUNAMI_SITE_URL + '/?connect_drive=1',
+      scopes: 'email profile ' + GOOGLE_DRIVE_SCOPE,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent'
       }
     }
   });
-  gdriveTokenClient.requestAccessToken();
+  if (error) setBackupMsg('Could not start Google Drive connect: ' + error.message, true);
 }
 
 function disconnectGoogleDrive() {
   try { localStorage.removeItem('tsunami_gdrive_token'); } catch(e) {}
-  setBackupMsg('Google Drive disconnected.', false);
+  setBackupMsg('Google Drive disconnected for backups (you stay signed in).', false);
   updateBackupUI();
 }
 
 async function backupToGoogleDrive() {
-  var token = getGdriveToken();
+  var token = await refreshGdriveTokenFromSession();
   if (!token) {
-    setBackupMsg('Google Drive session expired - reconnect and try again.', true);
+    setBackupMsg('Google Drive not connected — tap Connect and allow Drive access.', true);
     updateBackupUI();
     return;
   }
@@ -1004,7 +1015,10 @@ async function backupToGoogleDrive() {
       body: body
     });
     if (res.ok) {
-      setBackupMsg('Backed up to Google Drive: ' + filename, false);
+      setBackupMsg('Backed up to your Google Drive: ' + filename, false);
+    } else if (res.status === 401) {
+      setBackupMsg('Drive permission expired — tap Connect again.', true);
+      disconnectGoogleDrive();
     } else {
       setBackupMsg('Google Drive backup failed (' + res.status + ').', true);
     }
@@ -1014,13 +1028,13 @@ async function backupToGoogleDrive() {
 }
 
 async function restoreFromGoogleDrive() {
-  var token = getGdriveToken();
+  var token = await refreshGdriveTokenFromSession();
   if (!token) {
-    setBackupMsg('Google Drive session expired - reconnect and try again.', true);
+    setBackupMsg('Google Drive not connected — tap Connect first.', true);
     updateBackupUI();
     return;
   }
-  if (!confirm('Restore will replace your current cards with the latest Tsunami backup from Google Drive. Continue?')) return;
+  if (!confirm('Restore will replace your current cards with the latest Tsunami backup from your Google Drive. Continue?')) return;
   setBackupMsg('Looking up latest Google Drive backup...', false);
   try {
     var q = encodeURIComponent("name contains 'tsunami-backup' and trashed=false");
@@ -1030,7 +1044,7 @@ async function restoreFromGoogleDrive() {
     if (!listRes.ok) throw new Error('list failed (' + listRes.status + ')');
     var list = await listRes.json();
     if (!list.files || !list.files.length) {
-      setBackupMsg('No tsunami-backup files found on Google Drive.', true);
+      setBackupMsg('No tsunami-backup files found on your Google Drive.', true);
       return;
     }
     var file = list.files[0];
@@ -1040,7 +1054,7 @@ async function restoreFromGoogleDrive() {
     if (!getRes.ok) throw new Error('download failed (' + getRes.status + ')');
     var data = await getRes.json();
     applyRestoredCards(data);
-    setBackupMsg('Restored from Google Drive: ' + file.name, false);
+    setBackupMsg('Restored from your Google Drive: ' + file.name, false);
   } catch (e) {
     setBackupMsg('Google Drive restore error: ' + e.message, true);
   }
@@ -1443,7 +1457,8 @@ window.addEventListener('load', async function() {
   var stripeReturn = window.location.search.includes('stripe_success=1');
   var stripeCancel = window.location.search.includes('stripe_cancel=1');
   var wantCardsView = stripeReturn || window.location.hash === '#cards';
-  if (stripeReturn || stripeCancel || window.location.hash === '#cards') {
+  var connectDriveReturn = window.location.search.includes('connect_drive=1');
+  if (stripeReturn || stripeCancel || connectDriveReturn || window.location.hash === '#cards') {
     window.history.replaceState({}, document.title, window.location.pathname);
   }
   // Handle Dropbox OAuth callback (distinct from Supabase's own OAuth hash below)
@@ -1459,14 +1474,19 @@ window.addEventListener('load', async function() {
   if (window.location.hash && window.location.hash.includes('access_token')) {
     const { data, error } = await _supabase.auth.getSession();
     if (data && data.session) {
+      cacheDriveTokenFromSession(data.session);
       window.history.replaceState({}, document.title, window.location.pathname);
       await routeAfterSignIn(data.session.user);
+      if (connectDriveReturn) {
+        setTimeout(function(){ openSettings(); setBackupMsg('Google Drive connected to your account.', false); updateBackupUI(); }, 400);
+      }
       return;
     }
   }
   // Regular session check (also handles Stripe return after session is available)
   const { data: { session } } = await _supabase.auth.getSession();
   if (session && session.user) {
+    cacheDriveTokenFromSession(session);
     if (stripeReturn) {
       currentUser = session.user;
       var alreadyUnlocked = await checkUnlocked(session.user);
@@ -1485,6 +1505,9 @@ window.addEventListener('load', async function() {
     } else {
       await routeAfterSignIn(session.user);
     }
+    if (connectDriveReturn) {
+      setTimeout(function(){ openSettings(); setBackupMsg(getGdriveToken() ? 'Google Drive connected to your account.' : 'Signed in — if Drive Backup is still disconnected, tap Connect again and allow Drive.', false); updateBackupUI(); }, 400);
+    }
   } else if (stripeReturn || stripeCancel) {
     showAuthScreen('Sign in to finish activating your purchase.', 'error');
   } else {
@@ -1497,6 +1520,7 @@ window.addEventListener('load', async function() {
 _supabase.auth.onAuthStateChange(async function(event, session) {
   if (event === 'INITIAL_SESSION') return;
   if (session && session.user) {
+    cacheDriveTokenFromSession(session);
     await routeAfterSignIn(session.user);
   } else {
     currentUser = null;
