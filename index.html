@@ -384,8 +384,6 @@ input[type="date"] { color-scheme: dark; }
     <div class="acct-btn" id="acct-btn" onclick="toggleAcctMenu()">👤 ACCOUNT</div>
     <div class="acct-menu" id="acct-menu">
       <div class="acct-menu-email" id="acct-email">Loading...</div>
-      <button class="acct-menu-item" id="acct-gen-code-btn" onclick="generateAdminCode()" style="display:none;">🎟 Generate Code</button>
-      <button class="acct-menu-item" id="acct-gen-500-btn" onclick="generateAdminCode(500)" style="display:none;">🎟 Generate 500-Use Code</button>
       <button class="acct-menu-item" onclick="openSettings()">⚙ Settings</button>
       <button class="acct-menu-item danger" onclick="signOut()">→ Sign Out</button>
     </div>
@@ -395,7 +393,7 @@ input[type="date"] { color-scheme: dark; }
   </div><!-- /page-header -->
 
   <div id="settings-modal" style="display:none;position:fixed;inset:0;z-index:9997;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:24px;">
-    <div class="auth-box" style="max-width:420px;">
+    <div class="auth-box" style="max-width:420px;max-height:90vh;overflow-y:auto;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div class="auth-title" style="font-size:22px;">SETTINGS</div>
         <button class="po-close" onclick="closeSettings()">✕</button>
@@ -442,6 +440,24 @@ input[type="date"] { color-scheme: dark; }
             </div>
           </div>
           <div id="backup-msg" style="font-size:11px;color:#999;min-height:14px;"></div>
+        </div>
+      </div>
+
+      <div id="settings-admin-section" style="display:none;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.15em;color:#999;margin-bottom:8px;">ADMIN — PROMO CODES</div>
+        <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;">
+          <div style="color:#ccc;font-size:12px;line-height:1.4;">Create unlock codes for customers. Single-use = 1. Early adopters = 500.</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input id="admin-code-uses" type="number" min="1" value="1" style="flex:1;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;">
+            <button class="acct-menu-item" style="padding:8px 12px;font-size:12px;white-space:nowrap;" onclick="generateAdminCodeFromSettings()">Generate</button>
+          </div>
+          <button class="auth-btn" style="margin:0;padding:10px;font-size:14px;" onclick="generateAdminCode(500)">Generate 500-Use Code</button>
+          <div id="admin-code-result" style="display:none;background:rgba(0,0,0,0.35);border:1px solid rgba(51,204,102,0.35);border-radius:8px;padding:10px;">
+            <div style="font-size:11px;color:#999;margin-bottom:4px;" id="admin-code-label">New code</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.12em;color:#33cc66;word-break:break-all;" id="admin-code-value"></div>
+            <button class="acct-menu-item" style="margin-top:8px;padding:6px 10px;font-size:12px;" onclick="copyAdminCode()">Copy code</button>
+          </div>
+          <div id="admin-code-msg" style="font-size:11px;color:#999;min-height:14px;"></div>
         </div>
       </div>
 
@@ -740,6 +756,12 @@ function openSettings() {
   // Billing info from whatever we have locally - no separate subscription system, just unlock status
   supabaseGetProfileBilling();
   updateBackupUI();
+  var adminSection = document.getElementById('settings-admin-section');
+  if (adminSection) {
+    adminSection.style.display = (currentUser.email === ADMIN_EMAIL) ? 'block' : 'none';
+  }
+  var adminMsg = document.getElementById('admin-code-msg');
+  if (adminMsg) adminMsg.textContent = '';
   document.getElementById('settings-modal').style.display = 'flex';
 }
 
@@ -987,11 +1009,6 @@ function toggleAcctMenu() {
     if (avatar && btn) {
       btn.innerHTML = '<img src="'+avatar+'" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;"> ACCOUNT';
     }
-    var genBtn = document.getElementById('acct-gen-code-btn');
-    var gen500 = document.getElementById('acct-gen-500-btn');
-    var isAdmin = currentUser.email === ADMIN_EMAIL;
-    if (genBtn) genBtn.style.display = isAdmin ? 'block' : 'none';
-    if (gen500) gen500.style.display = isAdmin ? 'block' : 'none';
   }
   menu.classList.toggle('open');
 }
@@ -1006,6 +1023,52 @@ function makePromoCode() {
   return 'TSU-' + seg() + '-' + seg();
 }
 
+function setAdminCodeMsg(text, isError) {
+  var el = document.getElementById('admin-code-msg');
+  if (!el) return;
+  el.textContent = text || '';
+  el.style.color = isError ? '#ff8888' : '#999';
+}
+
+function showAdminCodeResult(code, maxUses) {
+  var wrap = document.getElementById('admin-code-result');
+  var label = document.getElementById('admin-code-label');
+  var value = document.getElementById('admin-code-value');
+  if (!wrap || !value) {
+    window.prompt('New code created. Copy it now:', code);
+    return;
+  }
+  if (label) label.textContent = maxUses === 1 ? 'New single-use code' : ('New ' + maxUses + '-use code');
+  value.textContent = code;
+  wrap.style.display = 'block';
+  setAdminCodeMsg('Code ready — copy and share it.', false);
+}
+
+function copyAdminCode() {
+  var value = document.getElementById('admin-code-value');
+  if (!value || !value.textContent) return;
+  var code = value.textContent;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(function() {
+      setAdminCodeMsg('Copied to clipboard.', false);
+    }).catch(function() {
+      window.prompt('Copy this code:', code);
+    });
+  } else {
+    window.prompt('Copy this code:', code);
+  }
+}
+
+function generateAdminCodeFromSettings() {
+  var input = document.getElementById('admin-code-uses');
+  var n = input ? parseInt(input.value, 10) : 1;
+  if (!n || n < 1) {
+    setAdminCodeMsg('Enter a whole number of 1 or more.', true);
+    return;
+  }
+  generateAdminCode(n);
+}
+
 async function generateAdminCode(presetUses) {
   if (!currentUser || currentUser.email !== ADMIN_EMAIL) return;
   document.getElementById('acct-menu').classList.remove('open');
@@ -1018,11 +1081,12 @@ async function generateAdminCode(presetUses) {
     if (raw === null) return;
     maxUses = parseInt(raw, 10);
     if (!maxUses || maxUses < 1) {
-      alert('Enter a whole number of 1 or more.');
+      setAdminCodeMsg('Enter a whole number of 1 or more.', true);
       return;
     }
   }
 
+  setAdminCodeMsg('Creating code...', false);
   try {
     var { data: code, error } = await _supabase.rpc('admin_create_promo_code', { p_max_uses: maxUses });
     if (error) {
@@ -1035,14 +1099,15 @@ async function generateAdminCode(presetUses) {
         use_count: 0
       });
       if (ins.error) {
-        alert('Failed to generate code: ' + (error.message || ins.error.message) + '\n\nRun the codes RLS SQL in Supabase (admin_create_promo_code).');
+        setAdminCodeMsg('Failed: ' + (error.message || ins.error.message) + ' — run the codes RLS SQL if needed.', true);
+        alert('Failed to generate code: ' + (error.message || ins.error.message));
         return;
       }
       code = fallback;
     }
-    var label = maxUses === 1 ? 'single-use' : (maxUses + '-use');
-    window.prompt('New ' + label + ' code created. Copy it now:', code);
+    showAdminCodeResult(code, maxUses);
   } catch (e) {
+    setAdminCodeMsg('Error: ' + e.message, true);
     alert('Error generating code: ' + e.message);
   }
 }
