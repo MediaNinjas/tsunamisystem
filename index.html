@@ -90,6 +90,32 @@ input.tright.dark-input:focus { background:rgba(255,255,255,0.2); border-color:r
 .tright.due-date { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.5); font-size:clamp(7px,0.9vw,10px); letter-spacing:0.08em; text-transform:uppercase; }
 .tright.promo-val { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); color:rgba(255,255,255,0.4); font-size:clamp(8px,1vw,11px); justify-content:flex-end; padding-right:8px; }
 
+/* Settings accordions */
+.settings-acc { border:1px solid rgba(255,255,255,0.1); border-radius:10px; background:rgba(255,255,255,0.03); overflow:hidden; }
+.settings-acc + .settings-acc { margin-top:8px; }
+.settings-acc > summary {
+  list-style:none; cursor:pointer; display:flex; flex-direction:column; gap:4px;
+  padding:12px 14px; user-select:none; -webkit-user-select:none;
+}
+.settings-acc > summary::-webkit-details-marker { display:none; }
+.settings-acc > summary::marker { content:''; }
+.settings-acc-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.settings-acc-label { font-family:'Bebas Neue',sans-serif; font-size:14px; letter-spacing:0.15em; color:#ccc; }
+.settings-acc-chevron { color:#666; font-size:11px; transition:transform 0.15s ease; flex-shrink:0; }
+.settings-acc[open] > summary .settings-acc-chevron { transform:rotate(90deg); color:#999; }
+.settings-acc-meta {
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace;
+  font-size:10px; line-height:1.4; color:#7a8a98; letter-spacing:0.02em;
+  white-space:normal; word-break:break-word;
+}
+.settings-acc[open] > summary .settings-acc-meta { display:none; }
+.settings-acc-body { padding:0 12px 12px; display:flex; flex-direction:column; gap:10px; }
+.settings-acc-body > .settings-acc-panel {
+  background:rgba(255,255,255,0.05); border-radius:10px; padding:12px;
+  display:flex; flex-direction:column; gap:10px;
+}
+#settings-admin-section { margin-top:8px; }
+
 /* CARD BACK - PLANNER */
 .card-planner { width:100%; border-radius:20px; background:linear-gradient(145deg,#0a1628 0%,#0d2040 40%,#08101e 100%); border:1px solid rgba(0,136,255,0.25); box-shadow:0 12px 40px rgba(0,0,0,0.5); padding:14px; display:flex; flex-direction:column; gap:10px; }
 
@@ -432,87 +458,168 @@ input[type="date"] { color-scheme: dark; }
         <button class="po-close" onclick="closeSettings()">✕</button>
       </div>
 
-      <div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.15em;color:#999;margin-bottom:8px;">CONNECTED ACCOUNT</div>
-        <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.05);border-radius:10px;padding:12px;">
-          <img id="settings-avatar" src="" style="width:36px;height:36px;border-radius:50%;display:none;">
-          <div id="settings-provider-icon" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:18px;">👤</div>
-          <div>
-            <div id="settings-email" style="color:#fff;font-size:14px;">—</div>
-            <div id="settings-provider" style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">—</div>
+      <details class="settings-acc" id="acc-account">
+        <summary>
+          <div class="settings-acc-head">
+            <span class="settings-acc-label">CONNECTED ACCOUNT</span>
+            <span class="settings-acc-chevron">›</span>
+          </div>
+          <div class="settings-acc-meta" id="acc-sum-account">loading…</div>
+        </summary>
+        <div class="settings-acc-body">
+          <div class="settings-acc-panel" style="flex-direction:row;align-items:center;gap:12px;">
+            <img id="settings-avatar" src="" style="width:36px;height:36px;border-radius:50%;display:none;">
+            <div id="settings-provider-icon" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:18px;">👤</div>
+            <div>
+              <div id="settings-email" style="color:#fff;font-size:14px;">—</div>
+              <div id="settings-provider" style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">—</div>
+            </div>
           </div>
         </div>
-      </div>
+      </details>
 
-      <div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.15em;color:#999;margin-bottom:8px;">BILLING</div>
-        <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:12px;color:#fff;font-size:13px;" id="settings-billing">—</div>
-      </div>
-
-      <div>
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.15em;color:#999;margin-bottom:8px;">BACKUPS</div>
-        <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;">
-          <div>
-            <div style="color:#fff;font-size:13px;margin-bottom:4px;">Auto-backup frequency</div>
-            <div style="color:#999;font-size:11px;line-height:1.4;margin-bottom:8px;">Weekly is recommended — enough safety without filling Drive/Dropbox. Runs when the app is open and a cloud destination is connected.</div>
-            <div id="backup-freq-options" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
-            <div id="backup-freq-status" style="font-size:11px;color:#999;margin-top:8px;min-height:14px;"></div>
+      <details class="settings-acc" id="acc-billing">
+        <summary>
+          <div class="settings-acc-head">
+            <span class="settings-acc-label">BILLING</span>
+            <span class="settings-acc-chevron">›</span>
           </div>
-          <div style="height:1px;background:rgba(255,255,255,0.08);"></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:16px;">📁</span>
-              <span style="color:#fff;font-size:13px;">Google Drive</span>
-              <span id="gdrive-status" style="font-size:11px;color:#999;">Not connected</span>
-            </div>
-            <div id="gdrive-actions" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;"></div>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:16px;">📦</span>
-              <span style="color:#fff;font-size:13px;">Dropbox</span>
-              <span id="dropbox-status" style="font-size:11px;color:#999;">Not connected</span>
-            </div>
-            <div id="dropbox-actions" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;"></div>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:16px;">✉️</span>
-              <span style="color:#fff;font-size:13px;">Email CSV backup</span>
-            </div>
-            <button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="exportCSV()">Send email</button>
-          </div>
-          <div id="backup-msg" style="font-size:11px;color:#999;min-height:14px;"></div>
+          <div class="settings-acc-meta" id="acc-sum-billing">loading…</div>
+        </summary>
+        <div class="settings-acc-body">
+          <div class="settings-acc-panel" style="color:#fff;font-size:13px;" id="settings-billing">—</div>
         </div>
-      </div>
+      </details>
+
+      <details class="settings-acc" id="acc-backups">
+        <summary>
+          <div class="settings-acc-head">
+            <span class="settings-acc-label">BACKUPS</span>
+            <span class="settings-acc-chevron">›</span>
+          </div>
+          <div class="settings-acc-meta" id="acc-sum-backups">loading…</div>
+        </summary>
+        <div class="settings-acc-body">
+          <div class="settings-acc-panel">
+            <div>
+              <div style="color:#fff;font-size:13px;margin-bottom:4px;">Auto-backup frequency</div>
+              <div style="color:#999;font-size:11px;line-height:1.4;margin-bottom:8px;">Weekly is recommended — enough safety without filling Drive/Dropbox. Runs when the app is open and a cloud destination is connected.</div>
+              <div id="backup-freq-options" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+              <div id="backup-freq-status" style="font-size:11px;color:#999;margin-top:8px;min-height:14px;"></div>
+            </div>
+            <div style="height:1px;background:rgba(255,255,255,0.08);"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:16px;">📁</span>
+                <span style="color:#fff;font-size:13px;">Google Drive</span>
+                <span id="gdrive-status" style="font-size:11px;color:#999;">Not connected</span>
+              </div>
+              <div id="gdrive-actions" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;"></div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:16px;">📦</span>
+                <span style="color:#fff;font-size:13px;">Dropbox</span>
+                <span id="dropbox-status" style="font-size:11px;color:#999;">Not connected</span>
+              </div>
+              <div id="dropbox-actions" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;"></div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:16px;">✉️</span>
+                <span style="color:#fff;font-size:13px;">Email CSV backup</span>
+              </div>
+              <button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="exportCSV()">Send email</button>
+            </div>
+            <div id="backup-msg" style="font-size:11px;color:#999;min-height:14px;"></div>
+          </div>
+        </div>
+      </details>
+
+      <details class="settings-acc" id="settings-affiliate-section">
+        <summary>
+          <div class="settings-acc-head">
+            <span class="settings-acc-label">AFFILIATES</span>
+            <span class="settings-acc-chevron">›</span>
+          </div>
+          <div class="settings-acc-meta" id="acc-sum-affiliates">loading…</div>
+        </summary>
+        <div class="settings-acc-body">
+          <div class="settings-acc-panel">
+            <div id="affiliate-panel-body" style="color:#ccc;font-size:12px;line-height:1.45;">Loading…</div>
+            <div id="affiliate-msg" style="font-size:11px;color:#999;min-height:14px;"></div>
+          </div>
+        </div>
+      </details>
 
       <div id="settings-admin-section" style="display:none;">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.15em;color:#999;margin-bottom:8px;">ADMIN — PROMO CODES</div>
-        <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;">
-          <div style="color:#ccc;font-size:12px;line-height:1.4;">Create unlock codes for customers. Leave code blank to auto-generate, or type your own (e.g. EARLY500).</div>
-          <div>
-            <div style="font-size:10px;color:#999;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Custom code (optional)</div>
-            <input id="admin-code-custom" type="text" maxlength="32" placeholder="Blank = random TSU-XXXX-XXXX" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;">
-          </div>
-          <div>
-            <div style="font-size:11px;color:#fff;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;font-weight:600;">Max uses</div>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <input id="admin-code-uses" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="7" size="8" value="1" autocomplete="off" placeholder="1–1000000" style="flex:1;min-width:10ch;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:#fff;-webkit-text-fill-color:#fff;caret-color:#fff;padding:10px 12px;font-size:16px;font-family:'DM Sans',sans-serif;outline:none;color-scheme:dark;letter-spacing:0.04em;">
-              <button class="acct-menu-item" style="padding:10px 14px;font-size:12px;white-space:nowrap;flex-shrink:0;" onclick="generateAdminCodeFromSettings()">Create code</button>
+        <details class="settings-acc" id="acc-admin-codes">
+          <summary>
+            <div class="settings-acc-head">
+              <span class="settings-acc-label">ADMIN — PROMO CODES</span>
+              <span class="settings-acc-chevron">›</span>
+            </div>
+            <div class="settings-acc-meta" id="acc-sum-admin-codes">loading…</div>
+          </summary>
+          <div class="settings-acc-body">
+            <div class="settings-acc-panel">
+              <div style="color:#ccc;font-size:12px;line-height:1.4;">Create unlock codes for customers. Leave code blank to auto-generate, or type your own (e.g. EARLY500).</div>
+              <div>
+                <div style="font-size:10px;color:#999;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Custom code (optional)</div>
+                <input id="admin-code-custom" type="text" maxlength="32" placeholder="Blank = random TSU-XXXX-XXXX" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;">
+              </div>
+              <div>
+                <div style="font-size:11px;color:#fff;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;font-weight:600;">Max uses</div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <input id="admin-code-uses" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="7" size="8" value="1" autocomplete="off" placeholder="1–1000000" style="flex:1;min-width:10ch;width:100%;box-sizing:border-box;background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:#fff;-webkit-text-fill-color:#fff;caret-color:#fff;padding:10px 12px;font-size:16px;font-family:'DM Sans',sans-serif;outline:none;color-scheme:dark;letter-spacing:0.04em;">
+                  <button class="acct-menu-item" style="padding:10px 14px;font-size:12px;white-space:nowrap;flex-shrink:0;" onclick="generateAdminCodeFromSettings()">Create code</button>
+                </div>
+              </div>
+              <button class="auth-btn" style="margin:0;padding:10px;font-size:14px;" onclick="generateAdminCode(500)">Create 500-Use Code</button>
+              <div id="admin-code-result" style="display:none;background:rgba(0,0,0,0.35);border:1px solid rgba(51,204,102,0.35);border-radius:8px;padding:10px;">
+                <div style="font-size:11px;color:#999;margin-bottom:4px;" id="admin-code-label">New code</div>
+                <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.12em;color:#33cc66;word-break:break-all;" id="admin-code-value"></div>
+                <button class="acct-menu-item" style="margin-top:8px;padding:6px 10px;font-size:12px;" onclick="copyAdminCode()">Copy code</button>
+              </div>
+              <div>
+                <div style="font-size:10px;color:#999;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;">Your promo codes</div>
+                <div id="admin-code-list" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto;"></div>
+              </div>
+              <div id="admin-code-msg" style="font-size:11px;color:#999;min-height:14px;"></div>
             </div>
           </div>
-          <button class="auth-btn" style="margin:0;padding:10px;font-size:14px;" onclick="generateAdminCode(500)">Create 500-Use Code</button>
-          <div id="admin-code-result" style="display:none;background:rgba(0,0,0,0.35);border:1px solid rgba(51,204,102,0.35);border-radius:8px;padding:10px;">
-            <div style="font-size:11px;color:#999;margin-bottom:4px;" id="admin-code-label">New code</div>
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.12em;color:#33cc66;word-break:break-all;" id="admin-code-value"></div>
-            <button class="acct-menu-item" style="margin-top:8px;padding:6px 10px;font-size:12px;" onclick="copyAdminCode()">Copy code</button>
+        </details>
+
+        <details class="settings-acc" id="acc-admin-affiliates">
+          <summary>
+            <div class="settings-acc-head">
+              <span class="settings-acc-label">ADMIN — AFFILIATES</span>
+              <span class="settings-acc-chevron">›</span>
+            </div>
+            <div class="settings-acc-meta" id="acc-sum-admin-affiliates">loading…</div>
+          </summary>
+          <div class="settings-acc-body">
+            <div class="settings-acc-panel">
+              <div style="color:#ccc;font-size:12px;line-height:1.4;">Review applications, run quick AI research, approve/deny, or add people manually. Payouts are manual ($5/sale, $25 threshold). Affiliates connect PayPal / Venmo / Cash App handles — not bank OAuth.</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="acct-menu-item aff-filter-btn active" data-aff-filter="pending" style="padding:5px 10px;font-size:11px;" onclick="setAdminAffiliateFilter('pending')">Pending</button>
+                <button class="acct-menu-item aff-filter-btn" data-aff-filter="approved" style="padding:5px 10px;font-size:11px;" onclick="setAdminAffiliateFilter('approved')">Approved</button>
+                <button class="acct-menu-item aff-filter-btn" data-aff-filter="denied" style="padding:5px 10px;font-size:11px;" onclick="setAdminAffiliateFilter('denied')">Denied</button>
+                <button class="acct-menu-item aff-filter-btn" data-aff-filter="all" style="padding:5px 10px;font-size:11px;" onclick="setAdminAffiliateFilter('all')">All</button>
+              </div>
+              <div id="admin-affiliate-list" style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow:auto;"></div>
+              <div style="height:1px;background:rgba(255,255,255,0.08);"></div>
+              <div style="font-size:10px;color:#999;letter-spacing:0.08em;text-transform:uppercase;">Add affiliate manually</div>
+              <input id="admin-aff-name" type="text" placeholder="Name" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;">
+              <input id="admin-aff-email" type="email" placeholder="Email" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;">
+              <input id="admin-aff-paypal" type="text" placeholder="PayPal email (optional)" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;">
+              <input id="admin-aff-venmo" type="text" placeholder="Venmo @username (optional)" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;">
+              <input id="admin-aff-cashapp" type="text" placeholder="Cash App $cashtag (optional)" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;">
+              <button class="auth-btn" style="margin:0;padding:10px;font-size:14px;" onclick="adminCreateAffiliateManual()">Add &amp; Approve</button>
+              <div id="admin-affiliate-msg" style="font-size:11px;color:#999;min-height:14px;"></div>
+            </div>
           </div>
-          <div>
-            <div style="font-size:10px;color:#999;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;">Your promo codes</div>
-            <div id="admin-code-list" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto;"></div>
-          </div>
-          <div id="admin-code-msg" style="font-size:11px;color:#999;min-height:14px;"></div>
-        </div>
+        </details>
       </div>
 
       <div style="text-align:center;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1);">
@@ -1184,15 +1291,45 @@ function openSettings() {
   supabaseGetProfileBilling();
   updateBackupUI();
   updateBackupFreqUI();
+  loadAffiliateSettingsPanel();
   var adminSection = document.getElementById('settings-admin-section');
   if (adminSection) {
     var isAdmin = isAdminUser(currentUser);
     adminSection.style.display = isAdmin ? 'block' : 'none';
-    if (isAdmin) loadAdminPromoCodes();
+    if (isAdmin) {
+      loadAdminPromoCodes();
+      loadAdminAffiliates();
+    }
   }
   var adminMsg = document.getElementById('admin-code-msg');
   if (adminMsg) adminMsg.textContent = '';
+  var affAdminMsg = document.getElementById('admin-affiliate-msg');
+  if (affAdminMsg) affAdminMsg.textContent = '';
+  refreshSettingsAccordionSummaries();
   document.getElementById('settings-modal').style.display = 'flex';
+}
+
+function setSettingsAccMeta(id, text) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = text || '—';
+}
+
+function refreshSettingsAccordionSummaries() {
+  if (!currentUser) return;
+  var provider = (currentUser.app_metadata && currentUser.app_metadata.provider) || 'email';
+  var providerLabel = provider === 'google' ? 'Google Account' : 'Email/Password';
+  setSettingsAccMeta('acc-sum-account', (currentUser.email || '—') + '  ·  ' + providerLabel);
+
+  var freq = (typeof getBackupFrequency === 'function') ? getBackupFrequency() : 'weekly';
+  var freqLabel = freq.charAt(0).toUpperCase() + freq.slice(1);
+  var driveOn = !!(typeof getGdriveToken === 'function' && getGdriveToken()) ||
+    (typeof hasStoredGdriveConnection === 'function' && hasStoredGdriveConnection());
+  var dropOn = !!(typeof getDropboxToken === 'function' && getDropboxToken());
+  setSettingsAccMeta(
+    'acc-sum-backups',
+    freqLabel + ' auto-backup  ·  Drive: ' + (driveOn ? 'connected' : 'off') +
+      '  ·  Dropbox: ' + (dropOn ? 'connected' : 'off') + '  ·  Email CSV'
+  );
 }
 
 async function supabaseGetProfileBilling() {
@@ -1201,17 +1338,24 @@ async function supabaseGetProfileBilling() {
   try {
     if (isAdminUser(currentUser)) {
       billingEl.innerHTML = 'Status: <span style="color:#33cc66;font-weight:700;">Admin</span><br>Full access — no unlock code required.';
+      setSettingsAccMeta('acc-sum-billing', 'Admin  ·  full access  ·  no code required');
       return;
     }
     var { data } = await _supabase.from('profiles').select('unlocked, code_used').eq('id', currentUser.id).single();
     if (data && data.unlocked) {
       billingEl.innerHTML = 'Status: <span style="color:#33cc66;font-weight:700;">Unlocked</span>' +
         (data.code_used ? '<br>Code used: ' + data.code_used : '');
+      setSettingsAccMeta(
+        'acc-sum-billing',
+        'Unlocked' + (data.code_used ? '  ·  code: ' + data.code_used : '')
+      );
     } else {
       billingEl.innerHTML = 'Status: <span style="color:#ff8888;">Not unlocked</span>';
+      setSettingsAccMeta('acc-sum-billing', 'Not unlocked');
     }
   } catch (e) {
     billingEl.textContent = 'Unable to load billing info.';
+    setSettingsAccMeta('acc-sum-billing', 'Unable to load');
   }
 }
 
@@ -1597,6 +1741,13 @@ function updateBackupUI() {
     dActions.innerHTML = '<button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="connectDropbox()">Connect</button>';
   }
   updateBackupFreqUI();
+  var freq = getBackupFrequency();
+  var freqLabel = freq ? (freq.charAt(0).toUpperCase() + freq.slice(1)) : 'Weekly';
+  setSettingsAccMeta(
+    'acc-sum-backups',
+    freqLabel + ' auto-backup  ·  Drive: ' + ((gToken || gStored) ? 'connected' : 'off') +
+      '  ·  Dropbox: ' + (dToken ? 'connected' : 'off') + '  ·  Email CSV'
+  );
 }
 
 async function connectGoogleDrive() {
@@ -1973,8 +2124,22 @@ async function loadAdminPromoCodes() {
     if (error) throw error;
     if (!data || !data.length) {
       list.innerHTML = '<div style="font-size:11px;color:#999;">No promo codes yet.</div>';
+      setSettingsAccMeta('acc-sum-admin-codes', 'No promo codes yet');
       return;
     }
+    var active = 0;
+    var names = [];
+    data.forEach(function(row) {
+      var maxUses = (typeof row.max_uses === 'number' && row.max_uses > 0) ? row.max_uses : 1;
+      var useCount = (typeof row.use_count === 'number' && row.use_count >= 0) ? row.use_count : 0;
+      var left = Math.max(0, maxUses - useCount);
+      if (!(row.used === true || left <= 0)) active++;
+      if (names.length < 3) names.push(row.code + '(' + left + ' left)');
+    });
+    setSettingsAccMeta(
+      'acc-sum-admin-codes',
+      data.length + ' codes  ·  ' + active + ' active  ·  ' + names.join('  ·  ')
+    );
     list.innerHTML = data.map(function(row) {
       var maxUses = (typeof row.max_uses === 'number' && row.max_uses > 0) ? row.max_uses : 1;
       var useCount = (typeof row.use_count === 'number' && row.use_count >= 0) ? row.use_count : 0;
@@ -1998,6 +2163,7 @@ async function loadAdminPromoCodes() {
     }).join('');
   } catch (e) {
     list.innerHTML = '<div style="font-size:11px;color:#ff8888;">Could not load codes.</div>';
+    setSettingsAccMeta('acc-sum-admin-codes', 'Could not load codes');
     console.error('Tsunami: loadAdminPromoCodes failed:', e);
   }
 }
@@ -2112,6 +2278,467 @@ async function generateAdminCode(presetUses) {
   } catch (e) {
     setAdminCodeMsg('Error: ' + e.message, true);
     alert('Error generating code: ' + e.message);
+  }
+}
+
+// ─── Affiliates ───────────────────────────────────────────────
+var AFFILIATE_COMMISSION_DOLLARS = 5;
+var AFFILIATE_PAYOUT_THRESHOLD = 25;
+var adminAffiliateFilter = 'pending';
+var _myAffiliateRow = null;
+var _adminAffiliateRows = [];
+var _adminAffiliateOwed = {};
+
+function setAffiliateMsg(text, isError) {
+  var el = document.getElementById('affiliate-msg');
+  if (!el) return;
+  el.textContent = text || '';
+  el.style.color = isError ? '#ff8888' : '#999';
+}
+
+function setAdminAffiliateMsg(text, isError) {
+  var el = document.getElementById('admin-affiliate-msg');
+  if (!el) return;
+  el.textContent = text || '';
+  el.style.color = isError ? '#ff8888' : '#999';
+}
+
+function moneyFromCents(cents) {
+  return '$' + ((Number(cents) || 0) / 100).toFixed(2);
+}
+
+function affiliateShareLink(code) {
+  try {
+    return window.location.origin + window.location.pathname + '?ref=' + encodeURIComponent(code);
+  } catch (e) {
+    return '?ref=' + encodeURIComponent(code);
+  }
+}
+
+function payoutConnectedLabel(row) {
+  var parts = [];
+  if (row.payout_paypal) parts.push('PayPal');
+  if (row.payout_venmo) parts.push('Venmo');
+  if (row.payout_cashapp) parts.push('Cash App');
+  return parts.length ? parts.join(' · ') + ' connected' : 'No payout method yet';
+}
+
+async function loadAffiliateSettingsPanel() {
+  var body = document.getElementById('affiliate-panel-body');
+  if (!body || !currentUser) return;
+  body.innerHTML = 'Loading…';
+  setAffiliateMsg('');
+  try {
+    var { data, error } = await _supabase
+      .from('affiliates')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data && currentUser.email) {
+      var byEmail = await _supabase
+        .from('affiliates')
+        .select('*')
+        .ilike('email', currentUser.email)
+        .limit(1)
+        .maybeSingle();
+      if (byEmail.error) throw byEmail.error;
+      data = byEmail.data;
+    }
+    _myAffiliateRow = data || null;
+
+    if (!_myAffiliateRow) {
+      body.innerHTML =
+        '<div style="color:#ccc;font-size:12px;line-height:1.45;margin-bottom:8px;">Earn $' + AFFILIATE_COMMISSION_DOLLARS + ' per paid unlock you refer. Payouts at $' + AFFILIATE_PAYOUT_THRESHOLD + '+ via PayPal, Venmo, or Cash App.</div>' +
+        '<input id="aff-apply-name" type="text" placeholder="Your name" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;">' +
+        '<input id="aff-apply-website" type="url" placeholder="Website (optional if you have social)" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;">' +
+        '<input id="aff-apply-channels" type="text" placeholder="Social / channel URLs (proof you can distribute)" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;">' +
+        '<textarea id="aff-apply-pitch" rows="2" placeholder="How will you promote Tsunami?" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;resize:vertical;font-family:\'DM Sans\',sans-serif;"></textarea>' +
+        '<textarea id="aff-apply-traffic" rows="2" placeholder="Where does your traffic come from? Rough size?" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;resize:vertical;font-family:\'DM Sans\',sans-serif;"></textarea>' +
+        '<div style="font-size:10px;color:#999;letter-spacing:0.06em;text-transform:uppercase;margin:4px 0;">Connect payout (at least one)</div>' +
+        '<input id="aff-apply-paypal" type="email" placeholder="PayPal email" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;">' +
+        '<input id="aff-apply-venmo" type="text" placeholder="Venmo @username" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;">' +
+        '<input id="aff-apply-cashapp" type="text" placeholder="Cash App $cashtag" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:8px;">' +
+        '<button class="auth-btn" style="margin:0;padding:10px;font-size:14px;" onclick="submitAffiliateApplication()">Apply to become an affiliate</button>';
+      setSettingsAccMeta('acc-sum-affiliates', 'Not applied  ·  $' + AFFILIATE_COMMISSION_DOLLARS + '/sale  ·  payout @ $' + AFFILIATE_PAYOUT_THRESHOLD);
+      return;
+    }
+
+    var statusColor = _myAffiliateRow.status === 'approved' ? '#33cc66' : (_myAffiliateRow.status === 'denied' ? '#ff8888' : '#ffcc66');
+    var payoutBits = [];
+    if (_myAffiliateRow.payout_paypal) payoutBits.push('PayPal ' + _myAffiliateRow.payout_paypal);
+    if (_myAffiliateRow.payout_venmo) payoutBits.push('Venmo ' + _myAffiliateRow.payout_venmo);
+    if (_myAffiliateRow.payout_cashapp) payoutBits.push('CashApp ' + _myAffiliateRow.payout_cashapp);
+    var affMeta = (_myAffiliateRow.status === 'approved' ? 'Approved' :
+      (_myAffiliateRow.status === 'denied' ? 'Denied' : 'Pending'));
+    if (_myAffiliateRow.affiliate_code) affMeta += '  ·  ' + _myAffiliateRow.affiliate_code;
+    affMeta += payoutBits.length ? ('  ·  ' + payoutBits.join('  ·  ')) : '  ·  no payout connected';
+    setSettingsAccMeta('acc-sum-affiliates', affMeta);
+    var html = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;">' +
+      '<div style="color:#fff;font-size:13px;font-weight:700;">' + escHtml(_myAffiliateRow.name || 'Affiliate') + '</div>' +
+      '<div style="font-size:11px;font-weight:700;color:' + statusColor + ';text-transform:uppercase;letter-spacing:0.08em;">' + escHtml(_myAffiliateRow.status) + '</div>' +
+      '</div>';
+
+    if (_myAffiliateRow.status === 'pending') {
+      html += '<div style="font-size:12px;color:#ccc;line-height:1.45;margin-bottom:8px;">Application received. AI / admin review will approve, deny, or leave pending if info is incomplete.</div>';
+      if (_myAffiliateRow.ai_summary) {
+        html += '<div style="font-size:11px;color:#999;background:rgba(0,0,0,0.25);border-radius:8px;padding:8px;margin-bottom:8px;"><b style="color:#ccc;">Research note:</b> ' + escHtml(_myAffiliateRow.ai_summary) + '</div>';
+      }
+    } else if (_myAffiliateRow.status === 'denied') {
+      html += '<div style="font-size:12px;color:#ff8888;line-height:1.45;margin-bottom:8px;">Not approved this round. You can message support if you want a second look.</div>';
+    } else if (_myAffiliateRow.status === 'approved' && _myAffiliateRow.affiliate_code) {
+      html += '<div style="font-size:11px;color:#999;margin-bottom:4px;">Your affiliate code</div>' +
+        '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:22px;letter-spacing:0.12em;color:#33cc66;margin-bottom:6px;">' + escHtml(_myAffiliateRow.affiliate_code) + '</div>' +
+        '<div style="font-size:11px;color:#999;word-break:break-all;margin-bottom:8px;">' + escHtml(affiliateShareLink(_myAffiliateRow.affiliate_code)) + '</div>' +
+        '<button class="acct-menu-item" style="padding:6px 10px;font-size:12px;margin-bottom:10px;" onclick="copyPromoCodeValue(\'' + String(_myAffiliateRow.affiliate_code).replace(/'/g, "\\'") + '\')">Copy code</button>';
+      var owed = await loadMyAffiliateOwedCents(_myAffiliateRow.id);
+      var ready = (owed / 100) >= AFFILIATE_PAYOUT_THRESHOLD;
+      setSettingsAccMeta(
+        'acc-sum-affiliates',
+        affMeta + '  ·  owed ' + moneyFromCents(owed) + (ready ? ' (ready)' : '')
+      );
+      html += '<div style="font-size:12px;color:#ccc;margin-bottom:10px;">Owed: <b style="color:#fff;">' + moneyFromCents(owed) + '</b>' +
+        (ready ? ' <span style="color:#33cc66;">· ready for payout</span>' : ' <span style="color:#999;">· threshold $' + AFFILIATE_PAYOUT_THRESHOLD + '</span>') +
+        '</div>';
+    }
+
+    html += '<div style="font-size:10px;color:#999;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;">Payout methods</div>' +
+      '<div style="font-size:11px;color:#ccc;margin-bottom:6px;">' + escHtml(payoutConnectedLabel(_myAffiliateRow)) + '</div>' +
+      '<input id="aff-payout-paypal" type="email" placeholder="PayPal email" value="' + escHtml(_myAffiliateRow.payout_paypal || '') + '" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;">' +
+      '<input id="aff-payout-venmo" type="text" placeholder="Venmo @username" value="' + escHtml(_myAffiliateRow.payout_venmo || '') + '" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;">' +
+      '<input id="aff-payout-cashapp" type="text" placeholder="Cash App $cashtag" value="' + escHtml(_myAffiliateRow.payout_cashapp || '') + '" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:8px;">' +
+      '<button class="acct-menu-item" style="padding:8px 12px;font-size:12px;" onclick="saveMyAffiliatePayouts()">Save payout connections</button>';
+
+    body.innerHTML = html;
+  } catch (e) {
+    console.error('Tsunami: affiliate panel failed:', e);
+    body.innerHTML = '<div style="color:#ff8888;font-size:12px;">Could not load affiliates. If this is first setup, run the affiliates migration in Supabase.</div>';
+    setSettingsAccMeta('acc-sum-affiliates', 'Could not load');
+  }
+}
+
+async function loadMyAffiliateOwedCents(affiliateId) {
+  try {
+    var { data } = await _supabase
+      .from('affiliate_commissions')
+      .select('amount_cents')
+      .eq('affiliate_id', affiliateId)
+      .eq('status', 'owed');
+    if (!data) return 0;
+    return data.reduce(function(sum, row) { return sum + (row.amount_cents || 0); }, 0);
+  } catch (e) {
+    return 0;
+  }
+}
+
+async function submitAffiliateApplication() {
+  if (!currentUser) return;
+  var name = (document.getElementById('aff-apply-name') || {}).value || '';
+  var website = (document.getElementById('aff-apply-website') || {}).value || '';
+  var channels = (document.getElementById('aff-apply-channels') || {}).value || '';
+  var pitch = (document.getElementById('aff-apply-pitch') || {}).value || '';
+  var traffic = (document.getElementById('aff-apply-traffic') || {}).value || '';
+  var paypal = (document.getElementById('aff-apply-paypal') || {}).value || '';
+  var venmo = (document.getElementById('aff-apply-venmo') || {}).value || '';
+  var cashapp = (document.getElementById('aff-apply-cashapp') || {}).value || '';
+  if (!String(name).trim()) {
+    setAffiliateMsg('Name is required.', true);
+    return;
+  }
+  if (!String(website).trim() && !String(channels).trim()) {
+    setAffiliateMsg('Add a website or social proof link.', true);
+    return;
+  }
+  if (!String(paypal).trim() && !String(venmo).trim() && !String(cashapp).trim()) {
+    setAffiliateMsg('Connect at least one payout method (PayPal, Venmo, or Cash App).', true);
+    return;
+  }
+  setAffiliateMsg('Submitting…', false);
+  try {
+    var { error } = await _supabase.rpc('submit_affiliate_application', {
+      p_name: String(name).trim(),
+      p_website: String(website).trim() || null,
+      p_channels: String(channels).trim() || null,
+      p_pitch: String(pitch).trim() || null,
+      p_traffic_notes: String(traffic).trim() || null,
+      p_payout_paypal: String(paypal).trim() || null,
+      p_payout_venmo: String(venmo).trim() || null,
+      p_payout_cashapp: String(cashapp).trim() || null
+    });
+    if (error) throw error;
+    setAffiliateMsg('Application submitted — pending review.', false);
+    await loadAffiliateSettingsPanel();
+  } catch (e) {
+    setAffiliateMsg(e.message || 'Submit failed', true);
+  }
+}
+
+async function saveMyAffiliatePayouts() {
+  var paypal = (document.getElementById('aff-payout-paypal') || {}).value || '';
+  var venmo = (document.getElementById('aff-payout-venmo') || {}).value || '';
+  var cashapp = (document.getElementById('aff-payout-cashapp') || {}).value || '';
+  setAffiliateMsg('Saving…', false);
+  try {
+    var { error } = await _supabase.rpc('update_my_affiliate_payouts', {
+      p_payout_paypal: String(paypal).trim() || null,
+      p_payout_venmo: String(venmo).trim() || null,
+      p_payout_cashapp: String(cashapp).trim() || null
+    });
+    if (error) throw error;
+    setAffiliateMsg('Payout methods saved.', false);
+    await loadAffiliateSettingsPanel();
+  } catch (e) {
+    setAffiliateMsg(e.message || 'Save failed', true);
+  }
+}
+
+function setAdminAffiliateFilter(filter) {
+  adminAffiliateFilter = filter || 'pending';
+  var btns = document.querySelectorAll('.aff-filter-btn');
+  for (var i = 0; i < btns.length; i++) {
+    var on = btns[i].getAttribute('data-aff-filter') === adminAffiliateFilter;
+    btns[i].classList.toggle('active', on);
+    btns[i].style.borderColor = on ? 'rgba(51,204,102,0.5)' : '';
+    btns[i].style.color = on ? '#33cc66' : '';
+  }
+  renderAdminAffiliateList();
+}
+
+async function loadAdminAffiliates() {
+  var list = document.getElementById('admin-affiliate-list');
+  if (!list || !currentUser || !isAdminUser(currentUser)) return;
+  list.innerHTML = '<div style="font-size:11px;color:#999;">Loading…</div>';
+  try {
+    var { data, error } = await _supabase
+      .from('affiliates')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (error) throw error;
+    _adminAffiliateRows = data || [];
+    _adminAffiliateOwed = {};
+    if (_adminAffiliateRows.length) {
+      var ids = _adminAffiliateRows.map(function(r) { return r.id; });
+      var { data: comms } = await _supabase
+        .from('affiliate_commissions')
+        .select('affiliate_id, amount_cents, status')
+        .in('affiliate_id', ids)
+        .eq('status', 'owed');
+      (comms || []).forEach(function(c) {
+        _adminAffiliateOwed[c.affiliate_id] = (_adminAffiliateOwed[c.affiliate_id] || 0) + (c.amount_cents || 0);
+      });
+    }
+    setAdminAffiliateFilter(adminAffiliateFilter);
+    var pending = 0, approved = 0, denied = 0, owedTotal = 0;
+    _adminAffiliateRows.forEach(function(r) {
+      if (r.status === 'pending') pending++;
+      else if (r.status === 'approved') approved++;
+      else if (r.status === 'denied') denied++;
+      owedTotal += _adminAffiliateOwed[r.id] || 0;
+    });
+    setSettingsAccMeta(
+      'acc-sum-admin-affiliates',
+      pending + ' pending  ·  ' + approved + ' approved  ·  ' + denied + ' denied  ·  owed ' + moneyFromCents(owedTotal) +
+        '  ·  $' + AFFILIATE_COMMISSION_DOLLARS + '/sale  ·  pay @ $' + AFFILIATE_PAYOUT_THRESHOLD
+    );
+  } catch (e) {
+    console.error('Tsunami: loadAdminAffiliates failed:', e);
+    list.innerHTML = '<div style="font-size:11px;color:#ff8888;">Could not load affiliates. Run the affiliates SQL migration in Supabase if tables are missing.</div>';
+    setSettingsAccMeta('acc-sum-admin-affiliates', 'Could not load affiliates');
+  }
+}
+
+function renderAdminAffiliateList() {
+  var list = document.getElementById('admin-affiliate-list');
+  if (!list) return;
+  var rows = (_adminAffiliateRows || []).filter(function(r) {
+    return adminAffiliateFilter === 'all' || r.status === adminAffiliateFilter;
+  });
+  if (!rows.length) {
+    list.innerHTML = '<div style="font-size:11px;color:#999;">No affiliates in this filter.</div>';
+    return;
+  }
+  list.innerHTML = rows.map(function(row) {
+    var owedCents = _adminAffiliateOwed[row.id] || 0;
+    var owed = owedCents / 100;
+    var ready = owed >= AFFILIATE_PAYOUT_THRESHOLD;
+    var verdict = row.ai_verdict || '—';
+    var verdictColor = verdict === 'approve' ? '#33cc66' : (verdict === 'deny' ? '#ff8888' : '#ffcc66');
+    var id = row.id;
+    return '<div style="background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;">' +
+      '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;">' +
+        '<div style="color:#fff;font-size:13px;font-weight:700;">' + escHtml(row.name) + '</div>' +
+        '<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#999;">' + escHtml(row.status) + '</div>' +
+      '</div>' +
+      '<div style="font-size:11px;color:#ccc;">' + escHtml(row.email) + '</div>' +
+      '<div style="font-size:11px;color:#999;">Payout: ' + escHtml(payoutConnectedLabel(row)) +
+        (row.payout_paypal ? '<br>PayPal: ' + escHtml(row.payout_paypal) : '') +
+        (row.payout_venmo ? '<br>Venmo: ' + escHtml(row.payout_venmo) : '') +
+        (row.payout_cashapp ? '<br>Cash App: ' + escHtml(row.payout_cashapp) : '') +
+      '</div>' +
+      (row.website || row.channels ? '<div style="font-size:11px;color:#999;word-break:break-all;">' + escHtml([row.website, row.channels].filter(Boolean).join(' · ')) + '</div>' : '') +
+      (row.pitch ? '<div style="font-size:11px;color:#ccc;">' + escHtml(row.pitch) + '</div>' : '') +
+      (row.traffic_notes ? '<div style="font-size:11px;color:#999;">Traffic: ' + escHtml(row.traffic_notes) + '</div>' : '') +
+      '<div style="font-size:11px;color:#999;">AI: <span style="color:' + verdictColor + ';font-weight:700;">' + escHtml(verdict) + '</span>' +
+        (row.ai_summary ? ' — ' + escHtml(row.ai_summary) : '') +
+      '</div>' +
+      (row.affiliate_code ? '<div style="font-size:12px;color:#33cc66;">Code: ' + escHtml(row.affiliate_code) + '</div>' : '') +
+      '<div style="font-size:11px;color:#ccc;">Owed ' + moneyFromCents(owedCents) +
+        (ready ? ' <span style="color:#33cc66;">· ready to pay</span>' : '') +
+      '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;">' +
+        '<button type="button" class="acct-menu-item" style="padding:5px 8px;font-size:11px;" onclick="adminRunAffiliateAi(\'' + id + '\')">AI research</button>' +
+        '<button type="button" class="acct-menu-item" style="padding:5px 8px;font-size:11px;color:#33cc66;" onclick="adminSetAffiliateStatus(\'' + id + '\',\'approved\')">Approve</button>' +
+        '<button type="button" class="acct-menu-item" style="padding:5px 8px;font-size:11px;color:#ffcc66;" onclick="adminSetAffiliateStatus(\'' + id + '\',\'pending\')">Pending</button>' +
+        '<button type="button" class="acct-menu-item danger" style="padding:5px 8px;font-size:11px;" onclick="adminSetAffiliateStatus(\'' + id + '\',\'denied\')">Deny</button>' +
+        (owedCents > 0 ? '<button type="button" class="acct-menu-item" style="padding:5px 8px;font-size:11px;" onclick="adminRecordAffiliatePayout(\'' + id + '\')">Record payout</button>' : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+/** Lightweight screen of traffic proof — no OpenAI key required. Upgrade later with an edge LLM. */
+function runAffiliateQuickResearch(row) {
+  var score = 0;
+  var notes = [];
+  var site = String(row.website || '').trim();
+  var channels = String(row.channels || '').trim();
+  var pitch = String(row.pitch || '').trim();
+  var traffic = String(row.traffic_notes || '').trim();
+  var urlLike = /(https?:\/\/|www\.|instagram\.com|tiktok\.com|youtube\.com|youtu\.be|twitter\.com|x\.com|linkedin\.com|facebook\.com|threads\.net|substack\.com|linktr\.ee)/i;
+
+  if (site) {
+    if (urlLike.test(site)) { score += 2; notes.push('Website/URL looks real.'); }
+    else { score += 1; notes.push('Website provided but not a clear URL.'); }
+  } else {
+    notes.push('No website.');
+  }
+
+  if (channels) {
+    if (urlLike.test(channels)) { score += 2; notes.push('Social/channel proof present.'); }
+    else { score += 1; notes.push('Channels described without clear links.'); }
+  } else {
+    notes.push('No social/channel links.');
+  }
+
+  if (pitch.length >= 40) { score += 1; notes.push('Promotion plan has detail.'); }
+  else if (pitch.length > 0) { notes.push('Pitch is thin.'); }
+  else { notes.push('No promotion pitch.'); }
+
+  if (/\d/.test(traffic) || /(k|followers|subs|newsletter|list|views|monthly)/i.test(traffic)) {
+    score += 1;
+    notes.push('Traffic notes include size or source signals.');
+  } else if (traffic) {
+    notes.push('Traffic notes lack size signals.');
+  } else {
+    notes.push('No traffic notes — hard to judge reach.');
+  }
+
+  if (!row.payout_paypal && !row.payout_venmo && !row.payout_cashapp) {
+    notes.push('No payout method connected.');
+  }
+
+  var verdict = 'pending';
+  if (score >= 5 && (site || channels)) verdict = 'approve';
+  else if (score <= 1) verdict = 'deny';
+  else verdict = 'pending';
+
+  var why = '';
+  if (verdict === 'approve') why = 'Looks like a real distributor with enough proof to try.';
+  else if (verdict === 'deny') why = 'Too little distribution proof — likely not worth a code yet.';
+  else why = 'Partial info — leave pending until links/traffic are clearer.';
+
+  return {
+    verdict: verdict,
+    summary: why + ' ' + notes.slice(0, 4).join(' ')
+  };
+}
+
+async function adminRunAffiliateAi(id) {
+  if (!isAdminUser(currentUser)) return;
+  var row = (_adminAffiliateRows || []).find(function(r) { return r.id === id; });
+  if (!row) return;
+  setAdminAffiliateMsg('Running quick research…', false);
+  try {
+    var result = runAffiliateQuickResearch(row);
+    var { error } = await _supabase.rpc('admin_set_affiliate_ai', {
+      p_id: id,
+      p_verdict: result.verdict,
+      p_summary: result.summary
+    });
+    if (error) throw error;
+    setAdminAffiliateMsg('AI: ' + result.verdict + ' — ' + result.summary, false);
+    await loadAdminAffiliates();
+  } catch (e) {
+    setAdminAffiliateMsg(e.message || 'Research failed', true);
+  }
+}
+
+async function adminSetAffiliateStatus(id, status) {
+  if (!isAdminUser(currentUser)) return;
+  setAdminAffiliateMsg('Updating…', false);
+  try {
+    var { error } = await _supabase.rpc('admin_set_affiliate_status', {
+      p_id: id,
+      p_status: status
+    });
+    if (error) throw error;
+    setAdminAffiliateMsg('Status set to ' + status, false);
+    await loadAdminAffiliates();
+  } catch (e) {
+    setAdminAffiliateMsg(e.message || 'Update failed', true);
+  }
+}
+
+async function adminRecordAffiliatePayout(id) {
+  if (!isAdminUser(currentUser)) return;
+  var note = window.prompt('Payout note (e.g. PayPal 7/14):', 'Paid via PayPal');
+  if (note === null) return;
+  setAdminAffiliateMsg('Recording payout…', false);
+  try {
+    var { data, error } = await _supabase.rpc('admin_record_affiliate_payout', {
+      p_affiliate_id: id,
+      p_note: note || null
+    });
+    if (error) throw error;
+    setAdminAffiliateMsg('Marked ' + (data || 0) + ' commission(s) paid.', false);
+    await loadAdminAffiliates();
+  } catch (e) {
+    setAdminAffiliateMsg(e.message || 'Payout record failed', true);
+  }
+}
+
+async function adminCreateAffiliateManual() {
+  if (!isAdminUser(currentUser)) return;
+  var name = (document.getElementById('admin-aff-name') || {}).value || '';
+  var email = (document.getElementById('admin-aff-email') || {}).value || '';
+  var paypal = (document.getElementById('admin-aff-paypal') || {}).value || '';
+  var venmo = (document.getElementById('admin-aff-venmo') || {}).value || '';
+  var cashapp = (document.getElementById('admin-aff-cashapp') || {}).value || '';
+  if (!String(name).trim() || !String(email).trim()) {
+    setAdminAffiliateMsg('Name and email required.', true);
+    return;
+  }
+  setAdminAffiliateMsg('Adding…', false);
+  try {
+    var { error } = await _supabase.rpc('admin_create_affiliate', {
+      p_name: String(name).trim(),
+      p_email: String(email).trim(),
+      p_payout_paypal: String(paypal).trim() || null,
+      p_payout_venmo: String(venmo).trim() || null,
+      p_payout_cashapp: String(cashapp).trim() || null,
+      p_approve: true
+    });
+    if (error) throw error;
+    ['admin-aff-name', 'admin-aff-email', 'admin-aff-paypal', 'admin-aff-venmo', 'admin-aff-cashapp'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    setAdminAffiliateMsg('Affiliate added & approved.', false);
+    await loadAdminAffiliates();
+  } catch (e) {
+    setAdminAffiliateMsg(e.message || 'Create failed', true);
   }
 }
 
@@ -2315,6 +2942,11 @@ async function saveCardsToCloud() {
 // Only leave it after a real session is confirmed (then unlock check / cards).
 window.addEventListener('load', async function() {
   showAuthScreen();
+  try {
+    var bootParams = new URLSearchParams(window.location.search);
+    var refCode = bootParams.get('ref');
+    if (refCode) localStorage.setItem('tsunami_affiliate_ref', String(refCode).trim().toUpperCase());
+  } catch (e) {}
   if (window.location.search.includes('dev=1')) {
     var appContent = document.getElementById('app-content');
     if (appContent) appContent.style.display = 'block';
