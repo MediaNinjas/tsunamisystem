@@ -308,12 +308,8 @@ input[type="date"] { color-scheme: dark; }
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0a0a0a">
 
-  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
-  <script>emailjs.init("ABQtM1FwPQdapHvgY");</script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- TODO: replace YOUR_PAYPAL_CLIENT_ID below with your real PayPal Client ID from developer.paypal.com -->
-  <script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
-  <!-- Google Identity Services - used for the Google Drive backup connection (separate from Google Sign-In) -->
+  <!-- Google Identity Services - used for Google Drive backup (separate from Google Sign-In) -->
   <script src="https://accounts.google.com/gsi/client"></script>
   <script>
     const _supabase = supabase.createClient('https://fxrhddcexwklyfzzgnvz.supabase.co', 'sb_publishable_erePboPbCCmm2tPW4JnJkw_eWZdmNEM');
@@ -419,25 +415,32 @@ input[type="date"] { color-scheme: dark; }
       <div>
         <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.15em;color:#999;margin-bottom:8px;">BACKUPS</div>
         <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:8px;">
               <span style="font-size:16px;">📁</span>
               <span style="color:#fff;font-size:13px;">Google Drive</span>
               <span id="gdrive-status" style="font-size:11px;color:#999;">Not connected</span>
             </div>
-            <div id="gdrive-actions">
+            <div id="gdrive-actions" style="display:flex;gap:6px;flex-wrap:wrap;">
               <button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="connectGoogleDrive()">Connect</button>
             </div>
           </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:8px;">
               <span style="font-size:16px;">📦</span>
               <span style="color:#fff;font-size:13px;">Dropbox</span>
               <span id="dropbox-status" style="font-size:11px;color:#999;">Not connected</span>
             </div>
-            <div id="dropbox-actions">
+            <div id="dropbox-actions" style="display:flex;gap:6px;flex-wrap:wrap;">
               <button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="connectDropbox()">Connect</button>
             </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:16px;">✉️</span>
+              <span style="color:#fff;font-size:13px;">Email CSV backup</span>
+            </div>
+            <button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="exportCSV()">Send email</button>
           </div>
           <div id="backup-msg" style="font-size:11px;color:#999;min-height:14px;"></div>
         </div>
@@ -596,46 +599,93 @@ async function handleAuth() {
   }
 }
 
-// TODO: set this to match whatever price you want to charge - shown to the buyer in the PayPal window
+// PayPal + cloud backup keys (paste live values — never commit secrets in status docs)
+// PayPal: developer.paypal.com → Apps → Client ID (Live)
+// Google: console.cloud.google.com → OAuth Web client (authorized JS origins = tsunamiapp.medianinjas.tv)
+// Dropbox: dropbox.com/developers/apps → App key (OAuth 2 redirect = https://tsunamiapp.medianinjas.tv/)
 var TSUNAMI_PRICE_USD = '20.00';
+var TSUNAMI_PAYPAL_CLIENT_ID = '';
+var GOOGLE_DRIVE_CLIENT_ID = '';
+var DROPBOX_APP_KEY = '';
+
+function isConfigured(value) {
+  return !!(value && String(value).trim() && String(value).indexOf('YOUR_') !== 0);
+}
 
 var paypalButtonRendered = false;
+var paypalSdkLoading = false;
+
+function loadPaypalSdk(cb) {
+  if (typeof paypal !== 'undefined') { cb(true); return; }
+  if (!isConfigured(TSUNAMI_PAYPAL_CLIENT_ID)) { cb(false); return; }
+  if (paypalSdkLoading) return;
+  paypalSdkLoading = true;
+  var s = document.createElement('script');
+  s.src = 'https://www.paypal.com/sdk/js?client-id=' + encodeURIComponent(TSUNAMI_PAYPAL_CLIENT_ID) + '&currency=USD';
+  s.onload = function() { paypalSdkLoading = false; cb(true); };
+  s.onerror = function() { paypalSdkLoading = false; cb(false); };
+  document.head.appendChild(s);
+}
+
 function initPaypalButton() {
-  if (paypalButtonRendered) return; // only render once
-  if (typeof paypal === 'undefined') return; // SDK not loaded (e.g. client-id not set yet)
   var container = document.getElementById('paypal-button-container');
+  var msg = document.getElementById('paypal-msg');
   if (!container) return;
-  paypal.Buttons({
-    style: { color: 'gold', shape: 'pill', label: 'pay', height: 45 },
-    createOrder: function(data, actions) {
-      return actions.order.create({
-        purchase_units: [{ amount: { value: TSUNAMI_PRICE_USD } }]
-      });
-    },
-    onApprove: async function(data, actions) {
-      var order = await actions.order.capture();
-      var msg = document.getElementById('paypal-msg');
-      if (msg) { msg.textContent = 'Payment received - unlocking...'; msg.className = 'auth-msg success'; }
-      // Generate a code as a receipt/record, mark it used by this buyer, and unlock their account
-      var code = makePromoCode();
-      try {
-        await _supabase.from('codes').insert({
-          code: code, used: true, used_by: currentUser.id, used_at: new Date().toISOString(),
-          paypal_order_id: order.id, max_uses: 1, use_count: 1
-        });
-        await _supabase.from('profiles').update({ unlocked: true, code_used: code }).eq('id', currentUser.id);
-      } catch (e) {
-        console.error('Tsunami: PayPal unlock save failed:', e);
-      }
-      setTimeout(function(){ launchApp(); }, 800);
-    },
-    onError: function(err) {
-      var msg = document.getElementById('paypal-msg');
-      if (msg) { msg.textContent = 'Payment failed - please try again.'; msg.className = 'auth-msg error'; }
-      console.error('Tsunami: PayPal error:', err);
+  if (!isConfigured(TSUNAMI_PAYPAL_CLIENT_ID)) {
+    container.style.display = 'none';
+    if (msg) { msg.textContent = ''; msg.className = 'auth-msg'; }
+    return;
+  }
+  container.style.display = 'block';
+  if (paypalButtonRendered) return;
+  loadPaypalSdk(function(ok) {
+    if (!ok || typeof paypal === 'undefined') {
+      if (msg) { msg.textContent = 'PayPal failed to load. Use card checkout.'; msg.className = 'auth-msg error'; }
+      return;
     }
-  }).render('#paypal-button-container');
-  paypalButtonRendered = true;
+    if (paypalButtonRendered) return;
+    paypal.Buttons({
+      style: { color: 'gold', shape: 'rect', label: 'pay', height: 45 },
+      createOrder: function(data, actions) {
+        return actions.order.create({
+          purchase_units: [{
+            description: 'Tsunami System Access',
+            amount: { value: TSUNAMI_PRICE_USD }
+          }]
+        });
+      },
+      onApprove: async function(data, actions) {
+        var order = await actions.order.capture();
+        if (msg) { msg.textContent = 'Payment received - unlocking...'; msg.className = 'auth-msg success'; }
+        if (!currentUser) {
+          if (msg) { msg.textContent = 'Signed out during payment. Sign in again.'; msg.className = 'auth-msg error'; }
+          return;
+        }
+        var code = makePromoCode();
+        try {
+          var ins = await _supabase.from('codes').insert({
+            code: code, used: true, used_by: currentUser.id, used_at: new Date().toISOString(),
+            paypal_order_id: order.id, max_uses: 1, use_count: 1
+          });
+          if (ins.error) throw ins.error;
+          var up = await _supabase.from('profiles').update({ unlocked: true, code_used: code }).eq('id', currentUser.id);
+          if (up.error) throw up.error;
+          setTimeout(function(){ launchApp({ forceCards: true }); }, 800);
+        } catch (e) {
+          console.error('Tsunami: PayPal unlock save failed:', e);
+          if (msg) { msg.textContent = 'Payment OK but unlock failed. Contact support with order ' + (order && order.id); msg.className = 'auth-msg error'; }
+        }
+      },
+      onError: function(err) {
+        if (msg) { msg.textContent = 'Payment failed - please try again or use card.'; msg.className = 'auth-msg error'; }
+        console.error('Tsunami: PayPal error:', err);
+      },
+      onCancel: function() {
+        if (msg) { msg.textContent = 'Payment cancelled.'; msg.className = 'auth-msg'; }
+      }
+    }).render('#paypal-button-container');
+    paypalButtonRendered = true;
+  });
 }
 
 var TSUNAMI_SUPABASE_URL = 'https://fxrhddcexwklyfzzgnvz.supabase.co';
@@ -816,34 +866,51 @@ async function finalizeDeleteAccount() {
   await signOut();
 }
 
-// ===== Backup connections: Google Drive + Dropbox =====
-// TODO: replace with your real Google Cloud OAuth Client ID (console.cloud.google.com -> APIs & Services -> Credentials)
-var GOOGLE_DRIVE_CLIENT_ID = 'YOUR_GOOGLE_DRIVE_CLIENT_ID.apps.googleusercontent.com';
-// TODO: replace with your real Dropbox App Key (dropbox.com/developers/apps)
-var DROPBOX_APP_KEY = 'YOUR_DROPBOX_APP_KEY';
-
+// ===== Backup connections: Google Drive + Dropbox + email =====
 var gdriveTokenClient = null;
+
+function getGdriveToken() {
+  try {
+    var raw = localStorage.getItem('tsunami_gdrive_token');
+    if (!raw) return null;
+    var parsed = JSON.parse(raw);
+    if (parsed.expires > Date.now()) return parsed.token;
+  } catch(e) {}
+  return null;
+}
+
+function getDropboxToken() {
+  try { return localStorage.getItem('tsunami_dropbox_token'); } catch(e) { return null; }
+}
+
+function applyRestoredCards(data) {
+  if (!data) throw new Error('Empty backup');
+  var restored = Array.isArray(data) ? data : (data.cards || data.card_data);
+  if (!Array.isArray(restored) || !restored.length) throw new Error('Backup has no cards');
+  cards = restored;
+  saveCards();
+  render();
+  if (typeof checkAllPromos === 'function') checkAllPromos();
+}
 
 function updateBackupUI() {
   var gStatus = document.getElementById('gdrive-status');
   var gActions = document.getElementById('gdrive-actions');
   var dStatus = document.getElementById('dropbox-status');
   var dActions = document.getElementById('dropbox-actions');
-  if (!gStatus) return; // settings modal not open yet
+  if (!gStatus) return;
 
-  var gToken = null;
-  try {
-    var raw = localStorage.getItem('tsunami_gdrive_token');
-    if (raw) {
-      var parsed = JSON.parse(raw);
-      if (parsed.expires > Date.now()) gToken = parsed.token;
-    }
-  } catch(e) {}
-
-  if (gToken) {
+  var gToken = getGdriveToken();
+  if (!isConfigured(GOOGLE_DRIVE_CLIENT_ID)) {
+    gStatus.textContent = 'Needs setup';
+    gStatus.style.color = '#ffaa66';
+    gActions.innerHTML = '<span style="font-size:11px;color:#999;">Add Google client ID</span>';
+  } else if (gToken) {
     gStatus.textContent = 'Connected';
     gStatus.style.color = '#33cc66';
-    gActions.innerHTML = '<button class="acct-menu-item" style="padding:4px 10px;font-size:11px;margin-right:6px;" onclick="backupToGoogleDrive()">Backup Now</button>' +
+    gActions.innerHTML =
+      '<button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="backupToGoogleDrive()">Backup</button>' +
+      '<button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="restoreFromGoogleDrive()">Restore</button>' +
       '<button class="acct-menu-item danger" style="padding:4px 10px;font-size:11px;" onclick="disconnectGoogleDrive()">Disconnect</button>';
   } else {
     gStatus.textContent = 'Not connected';
@@ -851,12 +918,17 @@ function updateBackupUI() {
     gActions.innerHTML = '<button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="connectGoogleDrive()">Connect</button>';
   }
 
-  var dToken = null;
-  try { dToken = localStorage.getItem('tsunami_dropbox_token'); } catch(e) {}
-  if (dToken) {
+  var dToken = getDropboxToken();
+  if (!isConfigured(DROPBOX_APP_KEY)) {
+    dStatus.textContent = 'Needs setup';
+    dStatus.style.color = '#ffaa66';
+    dActions.innerHTML = '<span style="font-size:11px;color:#999;">Add Dropbox app key</span>';
+  } else if (dToken) {
     dStatus.textContent = 'Connected';
     dStatus.style.color = '#33cc66';
-    dActions.innerHTML = '<button class="acct-menu-item" style="padding:4px 10px;font-size:11px;margin-right:6px;" onclick="backupToDropbox()">Backup Now</button>' +
+    dActions.innerHTML =
+      '<button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="backupToDropbox()">Backup</button>' +
+      '<button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="restoreFromDropbox()">Restore</button>' +
       '<button class="acct-menu-item danger" style="padding:4px 10px;font-size:11px;" onclick="disconnectDropbox()">Disconnect</button>';
   } else {
     dStatus.textContent = 'Not connected';
@@ -866,6 +938,10 @@ function updateBackupUI() {
 }
 
 function connectGoogleDrive() {
+  if (!isConfigured(GOOGLE_DRIVE_CLIENT_ID)) {
+    setBackupMsg('Google Drive Client ID is not configured yet.', true);
+    return;
+  }
   if (typeof google === 'undefined' || !google.accounts) {
     setBackupMsg('Google sign-in library did not load - check your connection and try again.', true);
     return;
@@ -884,7 +960,7 @@ function connectGoogleDrive() {
         setBackupMsg('Google Drive connected.', false);
         updateBackupUI();
       } else {
-        setBackupMsg('Google Drive connection failed.', true);
+        setBackupMsg('Google Drive connection failed' + (resp && resp.error ? (': ' + resp.error) : '.'), true);
       }
     }
   });
@@ -898,16 +974,16 @@ function disconnectGoogleDrive() {
 }
 
 async function backupToGoogleDrive() {
-  var raw = null;
-  try { raw = JSON.parse(localStorage.getItem('tsunami_gdrive_token')); } catch(e) {}
-  if (!raw || raw.expires < Date.now()) {
+  var token = getGdriveToken();
+  if (!token) {
     setBackupMsg('Google Drive session expired - reconnect and try again.', true);
     updateBackupUI();
     return;
   }
   setBackupMsg('Backing up to Google Drive...', false);
   var filename = 'tsunami-backup-' + new Date().toISOString().slice(0,10) + '.json';
-  var fileContent = JSON.stringify(cards, null, 2);
+  var payload = { version: 1, exported_at: new Date().toISOString(), cards: cards };
+  var fileContent = JSON.stringify(payload, null, 2);
   var metadata = { name: filename, mimeType: 'application/json' };
   var boundary = 'tsunami_backup_boundary';
   var body =
@@ -922,7 +998,7 @@ async function backupToGoogleDrive() {
     var res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer ' + raw.token,
+        'Authorization': 'Bearer ' + token,
         'Content-Type': 'multipart/related; boundary=' + boundary
       },
       body: body
@@ -937,12 +1013,45 @@ async function backupToGoogleDrive() {
   }
 }
 
-function connectDropbox() {
-  if (DROPBOX_APP_KEY === 'YOUR_DROPBOX_APP_KEY') {
-    setBackupMsg('Dropbox App Key not set up yet.', true);
+async function restoreFromGoogleDrive() {
+  var token = getGdriveToken();
+  if (!token) {
+    setBackupMsg('Google Drive session expired - reconnect and try again.', true);
+    updateBackupUI();
     return;
   }
-  var redirectUri = window.location.origin + window.location.pathname;
+  if (!confirm('Restore will replace your current cards with the latest Tsunami backup from Google Drive. Continue?')) return;
+  setBackupMsg('Looking up latest Google Drive backup...', false);
+  try {
+    var q = encodeURIComponent("name contains 'tsunami-backup' and trashed=false");
+    var listRes = await fetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&orderBy=modifiedTime desc&pageSize=5&fields=files(id,name,modifiedTime)', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!listRes.ok) throw new Error('list failed (' + listRes.status + ')');
+    var list = await listRes.json();
+    if (!list.files || !list.files.length) {
+      setBackupMsg('No tsunami-backup files found on Google Drive.', true);
+      return;
+    }
+    var file = list.files[0];
+    var getRes = await fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(file.id) + '?alt=media', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!getRes.ok) throw new Error('download failed (' + getRes.status + ')');
+    var data = await getRes.json();
+    applyRestoredCards(data);
+    setBackupMsg('Restored from Google Drive: ' + file.name, false);
+  } catch (e) {
+    setBackupMsg('Google Drive restore error: ' + e.message, true);
+  }
+}
+
+function connectDropbox() {
+  if (!isConfigured(DROPBOX_APP_KEY)) {
+    setBackupMsg('Dropbox App Key is not configured yet.', true);
+    return;
+  }
+  var redirectUri = window.location.origin + '/';
   var authUrl = 'https://www.dropbox.com/oauth2/authorize' +
     '?client_id=' + encodeURIComponent(DROPBOX_APP_KEY) +
     '&response_type=token' +
@@ -958,22 +1067,22 @@ function disconnectDropbox() {
 }
 
 async function backupToDropbox() {
-  var token = null;
-  try { token = localStorage.getItem('tsunami_dropbox_token'); } catch(e) {}
+  var token = getDropboxToken();
   if (!token) {
     setBackupMsg('Dropbox not connected.', true);
     updateBackupUI();
     return;
   }
   setBackupMsg('Backing up to Dropbox...', false);
-  var filename = '/tsunami-backup-' + new Date().toISOString().slice(0,10) + '.json';
-  var fileContent = JSON.stringify(cards, null, 2);
+  var filename = '/TsunamiBackups/tsunami-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  var payload = { version: 1, exported_at: new Date().toISOString(), cards: cards };
+  var fileContent = JSON.stringify(payload, null, 2);
   try {
     var res = await fetch('https://content.dropboxapi.com/2/files/upload', {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer ' + token,
-        'Dropbox-API-Arg': JSON.stringify({ path: filename, mode: 'overwrite', mute: true }),
+        'Dropbox-API-Arg': JSON.stringify({ path: filename, mode: 'overwrite', mute: true, autorename: true }),
         'Content-Type': 'application/octet-stream'
       },
       body: fileContent
@@ -988,6 +1097,56 @@ async function backupToDropbox() {
     }
   } catch (e) {
     setBackupMsg('Dropbox backup error: ' + e.message, true);
+  }
+}
+
+async function restoreFromDropbox() {
+  var token = getDropboxToken();
+  if (!token) {
+    setBackupMsg('Dropbox not connected.', true);
+    updateBackupUI();
+    return;
+  }
+  if (!confirm('Restore will replace your current cards with the latest Tsunami backup from Dropbox. Continue?')) return;
+  setBackupMsg('Looking up latest Dropbox backup...', false);
+  try {
+    var listRes = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ path: '/TsunamiBackups', limit: 50 })
+    });
+    if (listRes.status === 409) {
+      setBackupMsg('No TsunamiBackups folder yet - run Backup first.', true);
+      return;
+    }
+    if (!listRes.ok) throw new Error('list failed (' + listRes.status + ')');
+    var list = await listRes.json();
+    var files = (list.entries || []).filter(function(e) {
+      return e['.tag'] === 'file' && /tsunami-backup/i.test(e.name || '');
+    }).sort(function(a, b) {
+      return String(b.server_modified || '').localeCompare(String(a.server_modified || ''));
+    });
+    if (!files.length) {
+      setBackupMsg('No tsunami-backup files found in Dropbox.', true);
+      return;
+    }
+    var file = files[0];
+    var getRes = await fetch('https://content.dropboxapi.com/2/files/download', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Dropbox-API-Arg': JSON.stringify({ path: file.path_display || file.path_lower })
+      }
+    });
+    if (!getRes.ok) throw new Error('download failed (' + getRes.status + ')');
+    var data = await getRes.json();
+    applyRestoredCards(data);
+    setBackupMsg('Restored from Dropbox: ' + file.name, false);
+  } catch (e) {
+    setBackupMsg('Dropbox restore error: ' + e.message, true);
   }
 }
 
