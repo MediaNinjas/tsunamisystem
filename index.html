@@ -285,9 +285,11 @@ input[type="date"] { color-scheme: dark; }
 .code-pay-btn { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:10px; color:rgba(255,255,255,0.6); font-family:'DM Sans',sans-serif; font-size:13px; padding:12px; cursor:pointer; }
 .code-pay-btn:hover { border-color:rgba(255,255,255,0.3); color:#fff; }
 .code-signout { font-size:11px; color:rgba(255,255,255,0.6); cursor:pointer; text-decoration:underline; margin-top:8px; }
-.wave-gate { display:none; position:fixed; inset:0; z-index:10050; background:rgba(2,8,18,0.92); align-items:center; justify-content:center; padding:24px; }
+.wave-gate { display:none; position:fixed; inset:0; z-index:10050; background:rgba(2,8,18,0.94); align-items:center; justify-content:center; padding:24px; overflow:hidden; }
 .wave-gate.open { display:flex; }
-.wave-gate-box { width:100%; max-width:400px; background:linear-gradient(180deg, rgba(8,24,48,0.95), rgba(4,10,20,0.98)); border:1px solid rgba(80,180,255,0.25); border-radius:18px; padding:28px 24px; text-align:center; }
+.wave-gate-bg { position:absolute; inset:0; z-index:0; pointer-events:none; opacity:0.9; }
+.wave-gate-bg canvas { width:100%; height:100%; display:block; }
+.wave-gate-box { position:relative; z-index:1; width:100%; max-width:400px; background:linear-gradient(180deg, rgba(8,24,48,0.92), rgba(4,10,20,0.96)); border:1px solid rgba(80,180,255,0.28); border-radius:18px; padding:28px 24px; text-align:center; box-shadow:0 20px 60px rgba(0,40,80,0.35), inset 0 1px 0 rgba(255,255,255,0.06); backdrop-filter:blur(8px); }
 .wave-gate-kicker { font-family:'DM Sans',sans-serif; font-size:11px; letter-spacing:0.22em; text-transform:uppercase; color:#5ec8ff; margin-bottom:8px; }
 .wave-gate-title { font-family:'Bebas Neue',sans-serif; font-size:34px; letter-spacing:0.12em; color:#fff; margin-bottom:8px; }
 .wave-gate-copy { font-size:13px; color:rgba(255,255,255,0.7); line-height:1.5; margin-bottom:18px; }
@@ -298,6 +300,9 @@ input[type="date"] { color-scheme: dark; }
 .wave-hold-btn { position:relative; z-index:1; width:100%; height:54px; border:none; background:transparent; color:#fff; font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:0.14em; cursor:pointer; user-select:none; -webkit-user-select:none; touch-action:none; }
 .wave-gate-hint { font-size:11px; color:rgba(255,255,255,0.45); margin-bottom:12px; }
 .wave-gate-cancel { font-size:12px; color:rgba(255,255,255,0.55); cursor:pointer; text-decoration:underline; background:none; border:none; }
+@media (prefers-reduced-motion: reduce) {
+  .wave-fill::after { animation:none; }
+}
 .google-btn { display:flex; align-items:center; justify-content:center; gap:10px; background:#fff; border:none; border-radius:10px; color:#333; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; padding:12px 16px; cursor:pointer; width:100%; }
 .google-btn:hover { background:#f5f5f5; }
 .google-icon { width:20px; height:20px; }
@@ -381,6 +386,7 @@ input[type="date"] { color-scheme: dark; }
 </div>
 
 <div id="wave-gate" class="wave-gate" aria-hidden="true">
+  <div class="wave-gate-bg" aria-hidden="true"><canvas id="wave-grid-canvas"></canvas></div>
   <div class="wave-gate-box">
     <div class="wave-gate-kicker">Early Adopters</div>
     <div class="wave-gate-title">RIDE THE FIRST WAVE</div>
@@ -833,16 +839,141 @@ function openWaveGate(code, seatsLeft) {
     gate.setAttribute('aria-hidden', 'false');
   }
   wireWaveHoldButton();
+  startWaveGridLoop();
 }
 
 function closeWaveGate() {
   resetWaveHold();
   _waveGate.code = null;
+  stopWaveGridLoop();
   var gate = document.getElementById('wave-gate');
   if (gate) {
     gate.classList.remove('open');
     gate.setAttribute('aria-hidden', 'true');
   }
+}
+
+var _waveGrid = { raf: 0, running: false, t0: 0, resizeBound: false };
+
+function prefersReducedMotion() {
+  try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
+}
+
+function resizeWaveGridCanvas() {
+  var canvas = document.getElementById('wave-grid-canvas');
+  if (!canvas) return null;
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var w = window.innerWidth;
+  var h = window.innerHeight;
+  canvas.width = Math.floor(w * dpr);
+  canvas.height = Math.floor(h * dpr);
+  var ctx = canvas.getContext('2d');
+  if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { canvas: canvas, ctx: ctx, w: w, h: h };
+}
+
+function drawWaveGridFrame(ts) {
+  if (!_waveGrid.running) return;
+  var sized = resizeWaveGridCanvas._cache;
+  if (!sized || !sized.ctx) sized = resizeWaveGridCanvas._cache = resizeWaveGridCanvas();
+  if (!sized || !sized.ctx) return;
+  var ctx = sized.ctx;
+  var w = sized.w;
+  var h = sized.h;
+  var t = ((ts || performance.now()) - _waveGrid.t0) / 1000;
+  ctx.clearRect(0, 0, w, h);
+
+  // soft vignette / depth glow
+  var g = ctx.createRadialGradient(w * 0.5, h * 0.62, 40, w * 0.5, h * 0.55, Math.max(w, h) * 0.7);
+  g.addColorStop(0, 'rgba(20,90,160,0.22)');
+  g.addColorStop(0.55, 'rgba(6,30,60,0.12)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+
+  var horizon = h * 0.38;
+  var rows = 18;
+  var cols = 36;
+  var amp = Math.min(42, h * 0.055);
+  var phase = t * 1.15;
+
+  // vanishing-point perspective grid + wavy cross lines
+  ctx.lineWidth = 1;
+  for (var r = 0; r <= rows; r++) {
+    var p = r / rows;
+    var yBase = horizon + Math.pow(p, 1.45) * (h - horizon) * 1.05;
+    var rowAmp = amp * (0.25 + p * 0.95);
+    var alpha = 0.08 + p * 0.38;
+    ctx.beginPath();
+    for (var c = 0; c <= cols; c++) {
+      var u = c / cols;
+      var x = u * w;
+      var wave =
+        Math.sin(u * Math.PI * 3.2 + phase) * rowAmp +
+        Math.sin(u * Math.PI * 1.4 - phase * 0.7 + r * 0.18) * rowAmp * 0.35;
+      var y = yBase + wave * (0.35 + p * 0.65);
+      if (c === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = 'rgba(110, 210, 255, ' + alpha + ')';
+    ctx.stroke();
+  }
+
+  // depth lines (semi-vertical), following the mesh
+  for (var c2 = 0; c2 <= cols; c2++) {
+    if (c2 % 2 !== 0) continue;
+    var u2 = c2 / cols;
+    ctx.beginPath();
+    for (var r2 = 0; r2 <= rows; r2++) {
+      var p2 = r2 / rows;
+      var yBase2 = horizon + Math.pow(p2, 1.45) * (h - horizon) * 1.05;
+      var rowAmp2 = amp * (0.25 + p2 * 0.95);
+      var wave2 =
+        Math.sin(u2 * Math.PI * 3.2 + phase) * rowAmp2 +
+        Math.sin(u2 * Math.PI * 1.4 - phase * 0.7 + r2 * 0.18) * rowAmp2 * 0.35;
+      var x2 = u2 * w;
+      var y2 = yBase2 + wave2 * (0.35 + p2 * 0.65);
+      if (r2 === 0) ctx.moveTo(x2, y2);
+      else ctx.lineTo(x2, y2);
+    }
+    ctx.strokeStyle = 'rgba(80, 180, 255, ' + (0.05 + u2 * 0.05 + (c2 % 4 === 0 ? 0.08 : 0)) + ')';
+    ctx.stroke();
+  }
+
+  // horizon accent
+  ctx.beginPath();
+  ctx.moveTo(0, horizon);
+  ctx.lineTo(w, horizon);
+  ctx.strokeStyle = 'rgba(160, 230, 255, 0.18)';
+  ctx.stroke();
+
+  if (!prefersReducedMotion()) {
+    _waveGrid.raf = requestAnimationFrame(drawWaveGridFrame);
+  }
+}
+
+function startWaveGridLoop() {
+  stopWaveGridLoop();
+  _waveGrid.running = true;
+  _waveGrid.t0 = performance.now();
+  resizeWaveGridCanvas._cache = resizeWaveGridCanvas();
+  if (!_waveGrid.resizeBound) {
+    _waveGrid.resizeBound = true;
+    window.addEventListener('resize', function() {
+      if (_waveGrid.running) resizeWaveGridCanvas._cache = resizeWaveGridCanvas();
+    });
+  }
+  if (prefersReducedMotion()) {
+    drawWaveGridFrame(_waveGrid.t0);
+    return;
+  }
+  _waveGrid.raf = requestAnimationFrame(drawWaveGridFrame);
+}
+
+function stopWaveGridLoop() {
+  _waveGrid.running = false;
+  if (_waveGrid.raf) cancelAnimationFrame(_waveGrid.raf);
+  _waveGrid.raf = 0;
 }
 
 function resetWaveHold() {
