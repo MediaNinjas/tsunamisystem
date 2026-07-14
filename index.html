@@ -285,6 +285,19 @@ input[type="date"] { color-scheme: dark; }
 .code-pay-btn { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:10px; color:rgba(255,255,255,0.6); font-family:'DM Sans',sans-serif; font-size:13px; padding:12px; cursor:pointer; }
 .code-pay-btn:hover { border-color:rgba(255,255,255,0.3); color:#fff; }
 .code-signout { font-size:11px; color:rgba(255,255,255,0.6); cursor:pointer; text-decoration:underline; margin-top:8px; }
+.wave-gate { display:none; position:fixed; inset:0; z-index:10050; background:rgba(2,8,18,0.92); align-items:center; justify-content:center; padding:24px; }
+.wave-gate.open { display:flex; }
+.wave-gate-box { width:100%; max-width:400px; background:linear-gradient(180deg, rgba(8,24,48,0.95), rgba(4,10,20,0.98)); border:1px solid rgba(80,180,255,0.25); border-radius:18px; padding:28px 24px; text-align:center; }
+.wave-gate-kicker { font-family:'DM Sans',sans-serif; font-size:11px; letter-spacing:0.22em; text-transform:uppercase; color:#5ec8ff; margin-bottom:8px; }
+.wave-gate-title { font-family:'Bebas Neue',sans-serif; font-size:34px; letter-spacing:0.12em; color:#fff; margin-bottom:8px; }
+.wave-gate-copy { font-size:13px; color:rgba(255,255,255,0.7); line-height:1.5; margin-bottom:18px; }
+.wave-track { position:relative; height:54px; border-radius:999px; overflow:hidden; background:rgba(0,40,80,0.55); border:1px solid rgba(100,200,255,0.3); margin-bottom:14px; }
+.wave-fill { position:absolute; left:0; top:0; bottom:0; width:0%; background:linear-gradient(90deg, #0066aa, #33ccff 55%, #a8f0ff); transition:width 0.05s linear; }
+.wave-fill::after { content:''; position:absolute; inset:0; background:repeating-linear-gradient(-60deg, transparent, transparent 10px, rgba(255,255,255,0.12) 10px, rgba(255,255,255,0.12) 14px); animation:wave-skim 1.1s linear infinite; }
+@keyframes wave-skim { from { background-position:0 0; } to { background-position:40px 0; } }
+.wave-hold-btn { position:relative; z-index:1; width:100%; height:54px; border:none; background:transparent; color:#fff; font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:0.14em; cursor:pointer; user-select:none; -webkit-user-select:none; touch-action:none; }
+.wave-gate-hint { font-size:11px; color:rgba(255,255,255,0.45); margin-bottom:12px; }
+.wave-gate-cancel { font-size:12px; color:rgba(255,255,255,0.55); cursor:pointer; text-decoration:underline; background:none; border:none; }
 .google-btn { display:flex; align-items:center; justify-content:center; gap:10px; background:#fff; border:none; border-radius:10px; color:#333; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; padding:12px 16px; cursor:pointer; width:100%; }
 .google-btn:hover { background:#f5f5f5; }
 .google-icon { width:20px; height:20px; }
@@ -356,7 +369,7 @@ input[type="date"] { color-scheme: dark; }
   <div class="code-box">
     <div class="auth-title">ENTER YOUR CODE</div>
     <div class="code-sub">Enter your promo code or purchase code to unlock the Tsunami System. Don't have one? Get access below.</div>
-    <input class="code-input" id="code-input" type="text" placeholder="ENTER CODE" maxlength="20">
+    <input class="code-input" id="code-input" type="text" placeholder="ENTER CODE" maxlength="32">
     <div class="auth-msg" id="code-msg"></div>
     <button class="auth-btn" onclick="submitCode()">UNLOCK</button>
     <div id="paypal-button-container" style="margin-top:14px;"></div>
@@ -364,6 +377,21 @@ input[type="date"] { color-scheme: dark; }
     <button class="auth-btn" id="stripe-checkout-btn" onclick="startStripeCheckout()" style="background:#635bff;margin-top:6px;">💳 Pay with Card / Apple Pay / Cash App</button>
     <div class="auth-msg" id="stripe-msg"></div>
     <div class="code-signout" onclick="signOut()">Sign out</div>
+  </div>
+</div>
+
+<div id="wave-gate" class="wave-gate" aria-hidden="true">
+  <div class="wave-gate-box">
+    <div class="wave-gate-kicker">Early Adopters</div>
+    <div class="wave-gate-title">RIDE THE FIRST WAVE</div>
+    <div class="wave-gate-copy" id="wave-gate-copy">The first 500 early adopters unlock with a shared code. Humans hold the crest. Bots bounce.</div>
+    <div class="wave-gate-hint">Press and hold — don’t tap and release</div>
+    <div class="wave-track">
+      <div class="wave-fill" id="wave-fill"></div>
+      <button type="button" class="wave-hold-btn" id="wave-hold-btn">HOLD TO RIDE IN</button>
+    </div>
+    <div class="auth-msg" id="wave-gate-msg" style="min-height:18px;"></div>
+    <button type="button" class="wave-gate-cancel" onclick="closeWaveGate()">Cancel</button>
   </div>
 </div>
 
@@ -752,30 +780,186 @@ async function submitCode() {
     var exhausted = data.used === true || useCount >= maxUses;
     if (exhausted) { setCodeMsg('Invalid or already used code.', 'error'); return; }
 
-    var nextCount = useCount + 1;
-    var nowExhausted = nextCount >= maxUses;
-    var { data: updated, error: updErr } = await _supabase
-      .from('codes')
-      .update({
-        use_count: nextCount,
-        used: nowExhausted,
-        used_by: currentUser.id,
-        used_at: new Date().toISOString()
-      })
-      .eq('code', code)
-      .eq('use_count', useCount)
-      .select();
-    if (updErr || !updated || !updated.length) {
-      setCodeMsg('That code was just taken. Try again or use another code.', 'error');
+    // Shared early-adopter codes require the First Wave hold gate (bots fail a sustained press).
+    if (needsFirstWaveGate(data) && !hasWaveGatePass(code)) {
+      setCodeMsg('', '');
+      openWaveGate(code, Math.max(0, maxUses - useCount));
       return;
     }
 
-    await _supabase.from('profiles').update({ unlocked: true, code_used: code }).eq('id', currentUser.id);
-    setCodeMsg('Unlocked!', 'success');
-    setTimeout(function(){ launchApp(); }, 800);
+    await redeemValidatedCode(code, data, maxUses, useCount);
   } catch(e) {
     setCodeMsg('Error checking code. Try again.', 'error');
   }
+}
+
+function needsFirstWaveGate(data) {
+  if (!data) return false;
+  var maxUses = (typeof data.max_uses === 'number' && data.max_uses > 0) ? data.max_uses : 1;
+  // Multi-use free/promo codes (e.g. TSUNAMI first-500) get the early-adopter wave gate.
+  return maxUses > 1 && (data.type === 'free' || data.type == null);
+}
+
+function hasWaveGatePass(code) {
+  return !!(window._waveGatePass && window._waveGatePass.code === code && window._waveGatePass.until > Date.now());
+}
+
+function grantWaveGatePass(code) {
+  window._waveGatePass = { code: code, until: Date.now() + (2 * 60 * 1000) };
+}
+
+var _waveGate = {
+  code: null,
+  holding: false,
+  startedAt: 0,
+  raf: 0,
+  holdMs: 1800
+};
+
+function openWaveGate(code, seatsLeft) {
+  _waveGate.code = code;
+  resetWaveHold();
+  var gate = document.getElementById('wave-gate');
+  var copy = document.getElementById('wave-gate-copy');
+  var msg = document.getElementById('wave-gate-msg');
+  if (copy) {
+    copy.textContent = seatsLeft > 0
+      ? ('Early adopters ride first — about ' + seatsLeft + ' seats left on this wave. Hold the crest to prove you’re human.')
+      : 'Early adopters ride first. Hold the crest to prove you’re human.';
+  }
+  if (msg) { msg.textContent = ''; msg.className = 'auth-msg'; }
+  if (gate) {
+    gate.classList.add('open');
+    gate.setAttribute('aria-hidden', 'false');
+  }
+  wireWaveHoldButton();
+}
+
+function closeWaveGate() {
+  resetWaveHold();
+  _waveGate.code = null;
+  var gate = document.getElementById('wave-gate');
+  if (gate) {
+    gate.classList.remove('open');
+    gate.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function resetWaveHold() {
+  _waveGate.holding = false;
+  _waveGate.startedAt = 0;
+  if (_waveGate.raf) cancelAnimationFrame(_waveGate.raf);
+  _waveGate.raf = 0;
+  var fill = document.getElementById('wave-fill');
+  var btn = document.getElementById('wave-hold-btn');
+  if (fill) fill.style.width = '0%';
+  if (btn) btn.textContent = 'HOLD TO RIDE IN';
+}
+
+function wireWaveHoldButton() {
+  var btn = document.getElementById('wave-hold-btn');
+  if (!btn || btn._waveWired) return;
+  btn._waveWired = true;
+
+  function startHold(e) {
+    if (e) e.preventDefault();
+    if (!_waveGate.code) return;
+    _waveGate.holding = true;
+    _waveGate.startedAt = performance.now();
+    tickWaveHold();
+  }
+  function endHold(e) {
+    if (e) e.preventDefault();
+    if (!_waveGate.holding) return;
+    var held = performance.now() - _waveGate.startedAt;
+    _waveGate.holding = false;
+    if (_waveGate.raf) cancelAnimationFrame(_waveGate.raf);
+    _waveGate.raf = 0;
+    if (held < _waveGate.holdMs) {
+      var fill = document.getElementById('wave-fill');
+      var msg = document.getElementById('wave-gate-msg');
+      if (fill) fill.style.width = '0%';
+      var btnEl = document.getElementById('wave-hold-btn');
+      if (btnEl) btnEl.textContent = 'HOLD TO RIDE IN';
+      if (msg) {
+        msg.textContent = 'Keep holding — the first wave takes a second.';
+        msg.className = 'auth-msg error';
+      }
+    }
+  }
+
+  btn.addEventListener('pointerdown', startHold);
+  btn.addEventListener('pointerup', endHold);
+  btn.addEventListener('pointerleave', endHold);
+  btn.addEventListener('pointercancel', endHold);
+  btn.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+}
+
+function tickWaveHold() {
+  if (!_waveGate.holding) return;
+  var elapsed = performance.now() - _waveGate.startedAt;
+  var pct = Math.min(100, (elapsed / _waveGate.holdMs) * 100);
+  var fill = document.getElementById('wave-fill');
+  var btn = document.getElementById('wave-hold-btn');
+  if (fill) fill.style.width = pct + '%';
+  if (btn) btn.textContent = pct >= 100 ? 'RIDING…' : ('HOLD ' + Math.ceil((_waveGate.holdMs - elapsed) / 100) / 10 + 's');
+  if (elapsed >= _waveGate.holdMs) {
+    _waveGate.holding = false;
+    completeWaveGate();
+    return;
+  }
+  _waveGate.raf = requestAnimationFrame(tickWaveHold);
+}
+
+async function completeWaveGate() {
+  var code = _waveGate.code;
+  if (!code) return;
+  grantWaveGatePass(code);
+  var msg = document.getElementById('wave-gate-msg');
+  if (msg) { msg.textContent = 'Wave caught — unlocking…'; msg.className = 'auth-msg success'; }
+  closeWaveGate();
+  setCodeMsg('Wave caught — unlocking…', 'success');
+  try {
+    var { data, error } = await _supabase
+      .from('codes')
+      .select('*')
+      .eq('code', code)
+      .single();
+    if (error || !data) { setCodeMsg('Invalid code.', 'error'); return; }
+    var maxUses = (typeof data.max_uses === 'number' && data.max_uses > 0) ? data.max_uses : 1;
+    var useCount = (typeof data.use_count === 'number' && data.use_count >= 0) ? data.use_count : 0;
+    if (data.used === true || useCount >= maxUses) {
+      setCodeMsg('That wave just filled up. Try another code.', 'error');
+      return;
+    }
+    await redeemValidatedCode(code, data, maxUses, useCount);
+  } catch (e) {
+    setCodeMsg('Error unlocking. Try again.', 'error');
+  }
+}
+
+async function redeemValidatedCode(code, data, maxUses, useCount) {
+  var nextCount = useCount + 1;
+  var nowExhausted = nextCount >= maxUses;
+  var { data: updated, error: updErr } = await _supabase
+    .from('codes')
+    .update({
+      use_count: nextCount,
+      used: nowExhausted,
+      used_by: currentUser.id,
+      used_at: new Date().toISOString()
+    })
+    .eq('code', code)
+    .eq('use_count', useCount)
+    .select();
+  if (updErr || !updated || !updated.length) {
+    setCodeMsg('That code was just taken. Try again or use another code.', 'error');
+    return;
+  }
+
+  await _supabase.from('profiles').update({ unlocked: true, code_used: code }).eq('id', currentUser.id);
+  setCodeMsg('Unlocked — welcome aboard the first wave!', 'success');
+  setTimeout(function(){ launchApp(); }, 800);
 }
 
 async function signInWithGoogle() {
