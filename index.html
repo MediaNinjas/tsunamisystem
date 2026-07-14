@@ -772,11 +772,12 @@ input[type="date"] { color-scheme: dark; }
 <div id="grid"></div>
 <div id="ledger-view" style="display:none;">
   <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
-    <button onclick="exportCSV()" style="background:rgba(0,180,100,0.15);border:1.5px solid rgba(0,180,100,0.4);color:#33cc66;font-family:&#39;Bebas Neue&#39;,sans-serif;font-size:14px;letter-spacing:0.1em;padding:8px 16px;border-radius:8px;cursor:pointer;">⬇ EXPORT CSV</button>
+    <button onclick="downloadCardsCsv()" style="background:rgba(0,180,100,0.15);border:1.5px solid rgba(0,180,100,0.4);color:#33cc66;font-family:&#39;Bebas Neue&#39;,sans-serif;font-size:14px;letter-spacing:0.1em;padding:8px 16px;border-radius:8px;cursor:pointer;">⬇ EXPORT CSV</button>
     <label style="background:rgba(0,100,255,0.15);border:1.5px solid rgba(0,100,255,0.4);color:#6699ff;font-family:&#39;Bebas Neue&#39;,sans-serif;font-size:14px;letter-spacing:0.1em;padding:8px 16px;border-radius:8px;cursor:pointer;">
       ⬆ IMPORT CSV
       <input type="file" accept=".csv" onchange="importCSV(this)" style="display:none;">
     </label>
+    <button onclick="downloadBlankTemplateCsv()" title="Zeroed starter file — import this anytime to wipe clean (no reset button)" style="background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.2);color:#ccc;font-family:&#39;Bebas Neue&#39;,sans-serif;font-size:14px;letter-spacing:0.1em;padding:8px 16px;border-radius:8px;cursor:pointer;">⬇ BLANK CSV</button>
     <button id="auto-tsunami-btn" class="auto-btn" onclick="toggleAutoTsunami()">⚡ AUTO TSUNAMI</button>
     <span id="import-msg" style="font-size:11px;color:#aaa;"></span>
   </div>
@@ -3477,19 +3478,61 @@ async function launchApp(opts) {
   startAutoBackupWatcher();
 }
 
+function cardsStorageKey() {
+  return (currentUser && currentUser.id) ? ('tsunami_v1_' + currentUser.id) : 'tsunami_v1';
+}
+
+function makeBlankCards() {
+  var defaults = [];
+  for (var i = 1; i <= 8; i++) {
+    defaults.push({
+      id: i, name: '', balance: 0, limit: 0, minPayment: 0, interest: 0, tsunami: 0,
+      credentials: '', due: '', promo: '', promoOn: false, promoMonths: 0, promoApr: 0,
+      promoWarn: 3, promoEnd: '', dismissed: false, paid: false, empty: false
+    });
+  }
+  for (var j = 9; j <= 32; j++) defaults.push({ id: j, empty: true });
+  return defaults;
+}
+
 async function loadCardsFromCloud() {
+  if (!currentUser) return;
   try {
     var { data } = await _supabase.from('cards').select('card_data').eq('user_id', currentUser.id).single();
     if (data && data.card_data && data.card_data.length) {
       cards = data.card_data;
+      try { localStorage.setItem(cardsStorageKey(), JSON.stringify(cards)); } catch (e) {}
       return;
     }
-  } catch(e) {}
-  // Fall back to localStorage
+  } catch (e) {}
+  // Prefer this user's local cache only (never another account's shared key)
   try {
-    var saved = localStorage.getItem('tsunami_v1');
-    if (saved) { cards = JSON.parse(saved); }
-  } catch(e) {}
+    var saved = localStorage.getItem(cardsStorageKey());
+    if (saved) {
+      var parsed = JSON.parse(saved);
+      if (parsed && parsed.length) {
+        cards = parsed;
+        await saveCardsToCloud();
+        return;
+      }
+    }
+  } catch (e) {}
+  // Brand-new account: zeroed starter deck + one-time blank CSV download
+  cards = makeBlankCards();
+  await saveCardsToCloud();
+  offerBlankStarterCsvOnce();
+}
+
+function offerBlankStarterCsvOnce() {
+  if (!currentUser || !currentUser.id) return;
+  var flag = 'tsunami_blank_csv_given_' + currentUser.id;
+  try {
+    if (localStorage.getItem(flag)) return;
+    localStorage.setItem(flag, '1');
+  } catch (e) {}
+  downloadBlankTemplateCsv();
+  var msg = document.getElementById('import-msg');
+  if (msg) msg.textContent = 'Starter blank CSV downloaded — import it anytime to wipe clean.';
 }
 
 async function saveCardsToCloud() {
@@ -3511,8 +3554,7 @@ async function saveCardsToCloud() {
   } catch(e) {
     console.error('Tsunami cloud save exception:', e);
   }
-  // Also save to localStorage as backup
-  try { localStorage.setItem('tsunami_v1', JSON.stringify(cards)); } catch(e) {}
+  try { localStorage.setItem(cardsStorageKey(), JSON.stringify(cards)); } catch(e) {}
 }
 
 // Boot: Sign In / Sign Up is the first thing everyone sees.
@@ -3626,23 +3668,19 @@ document.addEventListener('DOMContentLoaded', function() {
 // ── END AUTH ────────────────────────────────────────────────
 
 function saveCards() {
-  try { localStorage.setItem("tsunami_v1", JSON.stringify(cards)); } catch(e) {}
+  try { localStorage.setItem(cardsStorageKey(), JSON.stringify(cards)); } catch(e) {}
   saveCardsToCloud();
 }
 
 function loadCards() {
   try {
-    var saved = localStorage.getItem("tsunami_v1");
+    var saved = localStorage.getItem(cardsStorageKey());
     if (saved) {
       var parsed = JSON.parse(saved);
       if (parsed && parsed.length) return parsed;
     }
   } catch(e) {}
-  // Default cards
-  var defaults = [];
-  for (var i=1; i<=8; i++) defaults.push({id:i,name:"",balance:0,limit:0,minPayment:0,interest:0,tsunami:0,credentials:"",due:"",promo:"",promoOn:false,promoMonths:0,promoApr:0,promoWarn:3,promoEnd:"",dismissed:false,paid:false,empty:false});
-  for (var i=9; i<=32; i++) defaults.push({id:i,empty:true});
-  return defaults;
+  return makeBlankCards();
 }
 
 var cards = loadCards();
@@ -4548,23 +4586,56 @@ function toggleView() {
   }
 }
 
-function exportCSV() {
-  var active = cards.filter(function(c){ return !c.empty; });
+function csvEscape(val) {
+  return '"' + String(val == null ? '' : val).replace(/"/g, '""') + '"';
+}
+
+function cardsToCsvText(list) {
+  var active = (list || []).filter(function(c){ return !c.empty; });
   var headers = ["Name","Balance","Limit","Monthly","Interest","Tsunami","Due","Credentials","PromoOn","PromoMonths","PromoApr","PromoWarn"];
   var rows = active.map(function(c){
     return [
-      '"'+(c.name||"").replace(/"/g,'""')+'"',
-      c.balance||0, c.limit||0, c.minPayment||0,
-      c.interest||0, c.tsunami||0,
-      '"'+(c.due||"").replace(/"/g,'""')+'"',
-      '"'+(c.credentials||"").replace(/"/g,'""')+'"',
-      c.promoOn?1:0,
-      c.promoMonths||0,
-      c.promoApr||0,
-      c.promoWarn||3
-    ].join(",");
+      csvEscape(c.name || ''),
+      c.balance || 0, c.limit || 0, c.minPayment || 0,
+      c.interest || 0, c.tsunami || 0,
+      csvEscape(c.due || ''),
+      csvEscape(c.credentials || ''),
+      c.promoOn ? 1 : 0,
+      c.promoMonths || 0,
+      c.promoApr || 0,
+      c.promoWarn || 3
+    ].join(',');
   });
-  var csv = headers.join(",") + "\n" + rows.join("\n");
+  return headers.join(',') + '\n' + rows.join('\n') + (rows.length ? '\n' : '');
+}
+
+function downloadTextFile(filename, text) {
+  var blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function() {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 0);
+}
+
+function downloadCardsCsv() {
+  var stamp = new Date().toISOString().slice(0, 10);
+  downloadTextFile('Tsunami-cards-' + stamp + '.csv', cardsToCsvText(cards));
+  var msg = document.getElementById('import-msg');
+  if (msg) msg.textContent = 'CSV downloaded.';
+}
+
+function downloadBlankTemplateCsv() {
+  downloadTextFile('Tsunami-blank-start.csv', cardsToCsvText(makeBlankCards()));
+}
+
+function exportCSV() {
+  var csv = cardsToCsvText(cards);
   var savedEmail = localStorage.getItem("tsunami_email")||"";
 
   var overlay = document.createElement("div");
@@ -4652,8 +4723,8 @@ function importCSV(input) {
   var reader = new FileReader();
   reader.onload = function(e) {
     var lines = e.target.result.split("\n").filter(function(l){ return l.trim(); });
-    if (lines.length < 2) { document.getElementById("import-msg").textContent = "Empty file."; return; }
-    var headers = lines[0].split(",").map(function(h){ return h.trim().toLowerCase(); });
+    if (lines.length < 1) { document.getElementById("import-msg").textContent = "Empty file."; return; }
+    var headers = lines[0].split(",").map(function(h){ return h.trim().toLowerCase().replace(/^"|"$/g,''); });
     var imported = [];
     for (var i = 1; i < lines.length; i++) {
       var vals = lines[i].match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g) || lines[i].split(",");
@@ -4678,13 +4749,17 @@ function importCSV(input) {
       };
       imported.push(card);
     }
-    // Fill remaining slots with empty
-    for (var j = imported.length+1; j <= 32; j++) imported.push({id:j, empty:true});
-    cards = imported;
+    // Header-only / all-zero wipe → seed the same blank starter deck
+    if (!imported.length) {
+      cards = makeBlankCards();
+    } else {
+      for (var j = imported.length+1; j <= 32; j++) imported.push({id:j, empty:true});
+      cards = imported;
+    }
     saveCards();
     render();
     renderLedger();
-    document.getElementById("import-msg").textContent = "Imported "+imported.filter(function(c){return !c.empty;}).length+" cards.";
+    document.getElementById("import-msg").textContent = "Imported "+cards.filter(function(c){return !c.empty;}).length+" cards.";
     input.value = "";
   };
   reader.readAsText(file);
