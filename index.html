@@ -1148,6 +1148,11 @@ async function signInWithGoogle() {
 
 var ADMIN_EMAIL = 'serano9@gmail.com';
 
+function isAdminUser(user) {
+  var email = user && user.email ? String(user.email).trim().toLowerCase() : '';
+  return email === String(ADMIN_EMAIL).toLowerCase();
+}
+
 function openSettings() {
   if (!currentUser) return;
   document.getElementById('acct-menu').classList.remove('open');
@@ -1181,7 +1186,7 @@ function openSettings() {
   updateBackupFreqUI();
   var adminSection = document.getElementById('settings-admin-section');
   if (adminSection) {
-    var isAdmin = currentUser.email === ADMIN_EMAIL;
+    var isAdmin = isAdminUser(currentUser);
     adminSection.style.display = isAdmin ? 'block' : 'none';
     if (isAdmin) loadAdminPromoCodes();
   }
@@ -1194,6 +1199,10 @@ async function supabaseGetProfileBilling() {
   var billingEl = document.getElementById('settings-billing');
   billingEl.textContent = 'Loading...';
   try {
+    if (isAdminUser(currentUser)) {
+      billingEl.innerHTML = 'Status: <span style="color:#33cc66;font-weight:700;">Admin</span><br>Full access — no unlock code required.';
+      return;
+    }
     var { data } = await _supabase.from('profiles').select('unlocked, code_used').eq('id', currentUser.id).single();
     if (data && data.unlocked) {
       billingEl.innerHTML = 'Status: <span style="color:#33cc66;font-weight:700;">Unlocked</span>' +
@@ -1952,7 +1961,7 @@ function escHtml(s) {
 
 async function loadAdminPromoCodes() {
   var list = document.getElementById('admin-code-list');
-  if (!list || !currentUser || currentUser.email !== ADMIN_EMAIL) return;
+  if (!list || !currentUser || !isAdminUser(currentUser)) return;
   list.innerHTML = '<div style="font-size:11px;color:#999;">Loading…</div>';
   try {
     var { data, error } = await _supabase
@@ -1994,7 +2003,7 @@ async function loadAdminPromoCodes() {
 }
 
 async function deleteAdminPromoCode(code) {
-  if (!currentUser || currentUser.email !== ADMIN_EMAIL || !code) return;
+  if (!currentUser || !isAdminUser(currentUser) || !code) return;
   if (!confirm('Delete promo code ' + code + '?\n\nCustomers will no longer be able to redeem it.')) return;
   setAdminCodeMsg('Deleting ' + code + '…', false);
   try {
@@ -2052,7 +2061,7 @@ function generateAdminCodeFromSettings() {
 }
 
 async function generateAdminCode(presetUses) {
-  if (!currentUser || currentUser.email !== ADMIN_EMAIL) return;
+  if (!currentUser || !isAdminUser(currentUser)) return;
   document.getElementById('acct-menu').classList.remove('open');
 
   var maxUses = 1;
@@ -2131,8 +2140,33 @@ async function signOut() {
 }
 
 async function checkUnlocked(user) {
+  if (isAdminUser(user)) {
+    // Admin always has app access — no promo/paywall required.
+    ensureAdminProfileUnlocked(user);
+    return true;
+  }
   var { data } = await _supabase.from('profiles').select('unlocked').eq('id', user.id).single();
   return !!(data && data.unlocked);
+}
+
+async function ensureAdminProfileUnlocked(user) {
+  if (!isAdminUser(user) || !user.id) return;
+  try {
+    var { data } = await _supabase.from('profiles').select('id, unlocked').eq('id', user.id).maybeSingle();
+    if (data && data.unlocked) return;
+    if (data) {
+      await _supabase.from('profiles').update({ unlocked: true, code_used: 'ADMIN' }).eq('id', user.id);
+    } else {
+      await _supabase.from('profiles').insert({
+        id: user.id,
+        email: user.email || ADMIN_EMAIL,
+        unlocked: true,
+        code_used: 'ADMIN'
+      });
+    }
+  } catch (e) {
+    console.error('Tsunami: admin unlock ensure failed:', e);
+  }
 }
 
 function showAuthScreen(msg, msgType) {
@@ -2161,6 +2195,11 @@ function showCodeScreen() {
 async function routeAfterSignIn(user) {
   currentUser = user;
   adoptConnectionTokensForUser(user);
+  if (isAdminUser(user)) {
+    await ensureAdminProfileUnlocked(user);
+    launchApp();
+    return;
+  }
   var unlocked = await checkUnlocked(user);
   if (unlocked) {
     launchApp();
