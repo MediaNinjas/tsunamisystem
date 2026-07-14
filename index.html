@@ -415,6 +415,13 @@ input[type="date"] { color-scheme: dark; }
       <div>
         <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:0.15em;color:#999;margin-bottom:8px;">BACKUPS</div>
         <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;">
+          <div>
+            <div style="color:#fff;font-size:13px;margin-bottom:4px;">Auto-backup frequency</div>
+            <div style="color:#999;font-size:11px;line-height:1.4;margin-bottom:8px;">Weekly is recommended — enough safety without filling Drive/Dropbox. Runs when the app is open and a cloud destination is connected.</div>
+            <div id="backup-freq-options" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+            <div id="backup-freq-status" style="font-size:11px;color:#999;margin-top:8px;min-height:14px;"></div>
+          </div>
+          <div style="height:1px;background:rgba(255,255,255,0.08);"></div>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:8px;">
               <span style="font-size:16px;">📁</span>
@@ -811,6 +818,7 @@ function openSettings() {
   // Billing info from whatever we have locally - no separate subscription system, just unlock status
   supabaseGetProfileBilling();
   updateBackupUI();
+  updateBackupFreqUI();
   var adminSection = document.getElementById('settings-admin-section');
   if (adminSection) {
     adminSection.style.display = (currentUser.email === ADMIN_EMAIL) ? 'block' : 'none';
@@ -873,6 +881,136 @@ async function finalizeDeleteAccount() {
 
 // ===== Backup connections: Google Drive (via Supabase Google OAuth) + Dropbox + email =====
 var GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+var BACKUP_FREQ_OPTIONS = [
+  { id: 'off', label: 'Off' },
+  { id: 'daily', label: 'Daily' },
+  { id: 'weekly', label: 'Weekly', recommended: true },
+  { id: 'monthly', label: 'Monthly' }
+];
+var BACKUP_FREQ_DEFAULT = 'weekly';
+var _autoBackupRunning = false;
+var _autoBackupTimer = null;
+
+function getBackupFrequency() {
+  try {
+    var f = localStorage.getItem('tsunami_backup_freq');
+    if (f === 'off' || f === 'daily' || f === 'weekly' || f === 'monthly') return f;
+  } catch (e) {}
+  return BACKUP_FREQ_DEFAULT;
+}
+
+function setBackupFrequency(freq) {
+  if (freq !== 'off' && freq !== 'daily' && freq !== 'weekly' && freq !== 'monthly') return;
+  try { localStorage.setItem('tsunami_backup_freq', freq); } catch (e) {}
+  updateBackupFreqUI();
+  if (freq !== 'off') maybeAutoBackup();
+}
+
+function getLastBackupAt() {
+  try {
+    var n = parseInt(localStorage.getItem('tsunami_backup_last') || '0', 10);
+    return n > 0 ? n : 0;
+  } catch (e) { return 0; }
+}
+
+function markBackupCompleted() {
+  try { localStorage.setItem('tsunami_backup_last', String(Date.now())); } catch (e) {}
+  updateBackupFreqUI();
+}
+
+function backupFrequencyMs(freq) {
+  if (freq === 'daily') return 24 * 60 * 60 * 1000;
+  if (freq === 'weekly') return 7 * 24 * 60 * 60 * 1000;
+  if (freq === 'monthly') return 30 * 24 * 60 * 60 * 1000;
+  return null;
+}
+
+function formatBackupAge(ts) {
+  if (!ts) return 'never';
+  var mins = Math.floor((Date.now() - ts) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  var hrs = Math.floor(mins / 60);
+  if (hrs < 48) return hrs + 'h ago';
+  var days = Math.floor(hrs / 24);
+  return days + 'd ago';
+}
+
+function updateBackupFreqUI() {
+  var wrap = document.getElementById('backup-freq-options');
+  var status = document.getElementById('backup-freq-status');
+  if (!wrap) return;
+  var current = getBackupFrequency();
+  wrap.innerHTML = BACKUP_FREQ_OPTIONS.map(function(opt) {
+    var on = opt.id === current;
+    var style = on
+      ? 'padding:6px 10px;font-size:11px;background:rgba(0,136,255,0.25);border:1px solid rgba(0,136,255,0.55);color:#fff;'
+      : 'padding:6px 10px;font-size:11px;';
+    var badge = opt.recommended
+      ? ' <span style="font-size:9px;letter-spacing:0.06em;text-transform:uppercase;opacity:0.85;">' + (on ? '· Rec' : 'Rec') + '</span>'
+      : '';
+    return '<button type="button" class="acct-menu-item" style="' + style + '" onclick="setBackupFrequency(\'' + opt.id + '\')">' +
+      opt.label + badge + '</button>';
+  }).join('');
+  if (!status) return;
+  var connected = !!(getGdriveToken() || getDropboxToken());
+  var last = getLastBackupAt();
+  var lastTxt = formatBackupAge(last);
+  if (current === 'off') {
+    status.textContent = 'Auto-backup off. Last cloud backup: ' + lastTxt + '.';
+  } else if (!connected) {
+    status.textContent = 'Set to ' + current + ' (recommended default is weekly). Connect Google Drive or Dropbox to run it.';
+  } else {
+    var ms = backupFrequencyMs(current);
+    var dueIn = last ? Math.max(0, ms - (Date.now() - last)) : 0;
+    var dueTxt = !last || dueIn <= 0 ? 'due now' : ('next in ~' + Math.ceil(dueIn / (24 * 60 * 60 * 1000)) + 'd');
+    if (current === 'daily' && last && dueIn > 0) {
+      dueTxt = 'next in ~' + Math.ceil(dueIn / (60 * 60 * 1000)) + 'h';
+    }
+    status.textContent = 'Auto-backup: ' + current + (current === 'weekly' ? ' (recommended)' : '') +
+      '. Last: ' + lastTxt + '. ' + dueTxt + '.';
+  }
+}
+
+function isAutoBackupDue() {
+  var freq = getBackupFrequency();
+  var ms = backupFrequencyMs(freq);
+  if (!ms) return false;
+  if (!getGdriveToken() && !getDropboxToken()) return false;
+  var last = getLastBackupAt();
+  return !last || (Date.now() - last >= ms);
+}
+
+async function maybeAutoBackup() {
+  if (_autoBackupRunning || !isAutoBackupDue()) return;
+  _autoBackupRunning = true;
+  try {
+    var anyOk = false;
+    if (getGdriveToken()) {
+      anyOk = !!(await backupToGoogleDrive({ silent: true })) || anyOk;
+    }
+    if (getDropboxToken()) {
+      anyOk = !!(await backupToDropbox({ silent: true })) || anyOk;
+    }
+    if (anyOk) {
+      setBackupMsg('Auto-backup complete (' + getBackupFrequency() + ').', false);
+      updateBackupFreqUI();
+    }
+  } catch (e) {
+    console.error('Tsunami: auto-backup failed:', e);
+  } finally {
+    _autoBackupRunning = false;
+  }
+}
+
+function startAutoBackupWatcher() {
+  if (_autoBackupTimer) return;
+  maybeAutoBackup();
+  _autoBackupTimer = setInterval(function(){ maybeAutoBackup(); }, 60 * 60 * 1000);
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') maybeAutoBackup();
+  });
+}
 
 function cacheDriveTokenFromSession(session) {
   if (!session || !session.provider_token) return;
@@ -959,6 +1097,7 @@ function updateBackupUI() {
     dStatus.style.color = '#999';
     dActions.innerHTML = '<button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="connectDropbox()">Connect</button>';
   }
+  updateBackupFreqUI();
 }
 
 async function connectGoogleDrive() {
@@ -984,14 +1123,18 @@ function disconnectGoogleDrive() {
   updateBackupUI();
 }
 
-async function backupToGoogleDrive() {
+async function backupToGoogleDrive(opts) {
+  opts = opts || {};
+  var silent = !!opts.silent;
   var token = await refreshGdriveTokenFromSession();
   if (!token) {
-    setBackupMsg('Google Drive not connected — tap Connect and allow Drive access.', true);
-    updateBackupUI();
-    return;
+    if (!silent) {
+      setBackupMsg('Google Drive not connected — tap Connect and allow Drive access.', true);
+      updateBackupUI();
+    }
+    return false;
   }
-  setBackupMsg('Backing up to Google Drive...', false);
+  if (!silent) setBackupMsg('Backing up to Google Drive...', false);
   var filename = 'tsunami-backup-' + new Date().toISOString().slice(0,10) + '.json';
   var payload = { version: 1, exported_at: new Date().toISOString(), cards: cards };
   var fileContent = JSON.stringify(payload, null, 2);
@@ -1015,16 +1158,19 @@ async function backupToGoogleDrive() {
       body: body
     });
     if (res.ok) {
-      setBackupMsg('Backed up to your Google Drive: ' + filename, false);
+      markBackupCompleted();
+      if (!silent) setBackupMsg('Backed up to your Google Drive: ' + filename, false);
+      return true;
     } else if (res.status === 401) {
-      setBackupMsg('Drive permission expired — tap Connect again.', true);
+      if (!silent) setBackupMsg('Drive permission expired — tap Connect again.', true);
       disconnectGoogleDrive();
-    } else {
+    } else if (!silent) {
       setBackupMsg('Google Drive backup failed (' + res.status + ').', true);
     }
   } catch (e) {
-    setBackupMsg('Google Drive backup error: ' + e.message, true);
+    if (!silent) setBackupMsg('Google Drive backup error: ' + e.message, true);
   }
+  return false;
 }
 
 async function restoreFromGoogleDrive() {
@@ -1080,14 +1226,18 @@ function disconnectDropbox() {
   updateBackupUI();
 }
 
-async function backupToDropbox() {
+async function backupToDropbox(opts) {
+  opts = opts || {};
+  var silent = !!opts.silent;
   var token = getDropboxToken();
   if (!token) {
-    setBackupMsg('Dropbox not connected.', true);
-    updateBackupUI();
-    return;
+    if (!silent) {
+      setBackupMsg('Dropbox not connected.', true);
+      updateBackupUI();
+    }
+    return false;
   }
-  setBackupMsg('Backing up to Dropbox...', false);
+  if (!silent) setBackupMsg('Backing up to Dropbox...', false);
   var filename = '/TsunamiBackups/tsunami-backup-' + new Date().toISOString().slice(0,10) + '.json';
   var payload = { version: 1, exported_at: new Date().toISOString(), cards: cards };
   var fileContent = JSON.stringify(payload, null, 2);
@@ -1102,16 +1252,19 @@ async function backupToDropbox() {
       body: fileContent
     });
     if (res.ok) {
-      setBackupMsg('Backed up to Dropbox: ' + filename, false);
+      markBackupCompleted();
+      if (!silent) setBackupMsg('Backed up to Dropbox: ' + filename, false);
+      return true;
     } else if (res.status === 401) {
-      setBackupMsg('Dropbox session expired - reconnect and try again.', true);
+      if (!silent) setBackupMsg('Dropbox session expired - reconnect and try again.', true);
       disconnectDropbox();
-    } else {
+    } else if (!silent) {
       setBackupMsg('Dropbox backup failed (' + res.status + ').', true);
     }
   } catch (e) {
-    setBackupMsg('Dropbox backup error: ' + e.message, true);
+    if (!silent) setBackupMsg('Dropbox backup error: ' + e.message, true);
   }
+  return false;
 }
 
 async function restoreFromDropbox() {
@@ -1399,6 +1552,7 @@ async function launchApp(opts) {
   render();
   setTimeout(function(){ checkAllPromos(); }, 100);
   showCardsView();
+  startAutoBackupWatcher();
 }
 
 async function loadCardsFromCloud() {
