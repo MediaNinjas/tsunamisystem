@@ -385,6 +385,7 @@ input[type="date"] { color-scheme: dark; }
     <div class="acct-menu" id="acct-menu">
       <div class="acct-menu-email" id="acct-email">Loading...</div>
       <button class="acct-menu-item" id="acct-gen-code-btn" onclick="generateAdminCode()" style="display:none;">🎟 Generate Code</button>
+      <button class="acct-menu-item" id="acct-gen-500-btn" onclick="generateAdminCode(500)" style="display:none;">🎟 Generate 500-Use Code</button>
       <button class="acct-menu-item" onclick="openSettings()">⚙ Settings</button>
       <button class="acct-menu-item danger" onclick="signOut()">→ Sign Out</button>
     </div>
@@ -604,7 +605,7 @@ function initPaypalButton() {
       try {
         await _supabase.from('codes').insert({
           code: code, used: true, used_by: currentUser.id, used_at: new Date().toISOString(),
-          paypal_order_id: order.id
+          paypal_order_id: order.id, max_uses: 1, use_count: 1
         });
         await _supabase.from('profiles').update({ unlocked: true, code_used: code }).eq('id', currentUser.id);
       } catch (e) {
@@ -656,18 +657,39 @@ async function startStripeCheckout() {
 async function submitCode() {
   var code = document.getElementById('code-input').value.trim().toUpperCase();
   if (!code) { setCodeMsg('Enter a code.', 'error'); return; }
+  if (!currentUser) { setCodeMsg('Sign in first.', 'error'); return; }
   setCodeMsg('Checking...', '');
   try {
     var { data, error } = await _supabase
       .from('codes')
       .select('*')
       .eq('code', code)
-      .eq('used', false)
       .single();
-    if (error || !data) { setCodeMsg('Invalid or already used code.', 'error'); return; }
-    // Mark code as used
-    await _supabase.from('codes').update({ used: true, used_by: currentUser.id, used_at: new Date().toISOString() }).eq('code', code);
-    // Mark profile as unlocked
+    if (error || !data) { setCodeMsg('Invalid code.', 'error'); return; }
+
+    var maxUses = (typeof data.max_uses === 'number' && data.max_uses > 0) ? data.max_uses : 1;
+    var useCount = (typeof data.use_count === 'number' && data.use_count >= 0) ? data.use_count : 0;
+    var exhausted = data.used === true || useCount >= maxUses;
+    if (exhausted) { setCodeMsg('Invalid or already used code.', 'error'); return; }
+
+    var nextCount = useCount + 1;
+    var nowExhausted = nextCount >= maxUses;
+    var { data: updated, error: updErr } = await _supabase
+      .from('codes')
+      .update({
+        use_count: nextCount,
+        used: nowExhausted,
+        used_by: currentUser.id,
+        used_at: new Date().toISOString()
+      })
+      .eq('code', code)
+      .eq('use_count', useCount)
+      .select();
+    if (updErr || !updated || !updated.length) {
+      setCodeMsg('That code was just taken. Try again or use another code.', 'error');
+      return;
+    }
+
     await _supabase.from('profiles').update({ unlocked: true, code_used: code }).eq('id', currentUser.id);
     setCodeMsg('Unlocked!', 'success');
     setTimeout(function(){ launchApp(); }, 800);
@@ -966,7 +988,10 @@ function toggleAcctMenu() {
       btn.innerHTML = '<img src="'+avatar+'" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;margin-right:6px;"> ACCOUNT';
     }
     var genBtn = document.getElementById('acct-gen-code-btn');
-    if (genBtn) genBtn.style.display = (currentUser.email === ADMIN_EMAIL) ? 'block' : 'none';
+    var gen500 = document.getElementById('acct-gen-500-btn');
+    var isAdmin = currentUser.email === ADMIN_EMAIL;
+    if (genBtn) genBtn.style.display = isAdmin ? 'block' : 'none';
+    if (gen500) gen500.style.display = isAdmin ? 'block' : 'none';
   }
   menu.classList.toggle('open');
 }
@@ -981,17 +1006,37 @@ function makePromoCode() {
   return 'TSU-' + seg() + '-' + seg();
 }
 
-async function generateAdminCode() {
+async function generateAdminCode(presetUses) {
   if (!currentUser || currentUser.email !== ADMIN_EMAIL) return;
-  var code = makePromoCode();
-  try {
-    var { error } = await _supabase.from('codes').insert({ code: code, used: false });
-    if (error) {
-      alert('Failed to generate code: ' + error.message);
+  document.getElementById('acct-menu').classList.remove('open');
+
+  var maxUses = 1;
+  if (typeof presetUses === 'number' && presetUses > 0) {
+    maxUses = Math.floor(presetUses);
+  } else {
+    var raw = window.prompt('How many uses for this code?\n\n1 = single-use\n500 = early-adopter shared code', '1');
+    if (raw === null) return;
+    maxUses = parseInt(raw, 10);
+    if (!maxUses || maxUses < 1) {
+      alert('Enter a whole number of 1 or more.');
       return;
     }
-    // Show it in a simple prompt so it's easy to copy
-    window.prompt('New single-use code created. Copy it now:', code);
+  }
+
+  var code = makePromoCode();
+  try {
+    var { error } = await _supabase.from('codes').insert({
+      code: code,
+      used: false,
+      max_uses: maxUses,
+      use_count: 0
+    });
+    if (error) {
+      alert('Failed to generate code: ' + error.message + '\n\nIf it mentions max_uses, run the multi-use SQL migration in Supabase first.');
+      return;
+    }
+    var label = maxUses === 1 ? 'single-use' : (maxUses + '-use');
+    window.prompt('New ' + label + ' code created. Copy it now:', code);
   } catch (e) {
     alert('Error generating code: ' + e.message);
   }

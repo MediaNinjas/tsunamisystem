@@ -70,6 +70,8 @@ Deno.serve(async (req) => {
         used_by: userId,
         used_at: new Date().toISOString(),
         stripe_session_id: session.id,
+        max_uses: 1,
+        use_count: 1,
       });
 
       // Unlock their account

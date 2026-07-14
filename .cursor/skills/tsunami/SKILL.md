@@ -38,7 +38,7 @@ description: >-
 - Always gate with `checkUnlocked()` before `launchApp()` on session restore **and** `onAuthStateChange`. Committed `origin/main` did this; a local regression removed it and broke the paywall.
 - Remove the `checkUnlocked` branch that auto-unlocks when `unlocked === undefined` — that bypasses payment unless RLS blocks it.
 - `?dev=1` skips auth for local testing only — do not rely on it in production.
-- Admin (`serano9@gmail.com`) can generate single-use codes via account menu.
+- Admin (`serano9@gmail.com`) can generate codes via Account menu: single-use (prompt for uses) or one-click **Generate 500-Use Code**. Codes support `max_uses` / `use_count`.
 
 **Unlock paths:**
 
@@ -115,7 +115,7 @@ Local static test: `python -m http.server 8000` in repo root.
 | PayPal | Not configured (placeholder client id) |
 | Google Drive / Dropbox backup | UI only (placeholder OAuth keys) |
 | CSV email backup | Needs `RESEND_API_KEY` on Netlify |
-| Early-adopter shared code (500 uses) | Not built |
+| Early-adopter shared code (N uses) | Built — admin Generate 500-Use Code + multi-use redeem |
 
 ## When stuck
 
