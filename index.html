@@ -610,8 +610,9 @@ input[type="date"] { color-scheme: dark; }
                   <input id="admin-aff-default-commission" type="text" inputmode="decimal" placeholder="5" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.25);border-radius:8px;color:#fff;padding:10px 12px;font-size:16px;font-family:ui-monospace,Menlo,Consolas,monospace;">
                 </div>
                 <button class="acct-menu-item" style="padding:10px 14px;font-size:12px;white-space:nowrap;" onclick="saveAdminAffiliateDefaultCommission()">Save rate</button>
+                <button class="acct-menu-item" style="padding:10px 14px;font-size:12px;white-space:nowrap;color:#33cc66;border-color:rgba(51,204,102,0.45);" onclick="applyStandardCommissionToAll()">Apply to all</button>
               </div>
-              <div style="font-size:11px;color:#999;line-height:1.35;">Already-approved partners keep their locked $/sale until they resubmit.</div>
+              <div style="font-size:11px;color:#999;line-height:1.35;">Save rate updates the standard for new approvals. <b style="color:#ccc;">Apply to all</b> rewrites every affiliate’s locked rate to that standard.</div>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
                 <button class="acct-menu-item aff-filter-btn active" data-aff-filter="pending" style="padding:5px 10px;font-size:11px;" onclick="setAdminAffiliateFilter('pending')">Pending</button>
                 <button class="acct-menu-item aff-filter-btn" data-aff-filter="approved" style="padding:5px 10px;font-size:11px;" onclick="setAdminAffiliateFilter('approved')">Approved</button>
@@ -2342,13 +2343,45 @@ async function saveAdminAffiliateDefaultCommission() {
     if (input) input.value = String(AFFILIATE_COMMISSION_DOLLARS);
     setAdminAffiliateMsg(
       'Standard commission saved at $' + AFFILIATE_COMMISSION_DOLLARS +
-        '/sale. Existing affiliates keep their locked rate until they resubmit.',
+        '/sale. Existing affiliates keep their locked rate unless you Apply to all.',
       false
     );
     await loadAdminAffiliates();
     await loadAffiliateSettingsPanel();
   } catch (e) {
     setAdminAffiliateMsg(e.message || 'Could not save commission', true);
+  }
+}
+
+async function applyStandardCommissionToAll() {
+  if (!isAdminUser(currentUser)) return;
+  // Save the input first so "Apply to all" uses what they typed.
+  var input = document.getElementById('admin-aff-default-commission');
+  var raw = input ? String(input.value || '').trim() : '';
+  var dollars = parseFloat(raw);
+  if (isFinite(dollars) && dollars >= 0 && dollars <= 1000) {
+    try {
+      var saved = await _supabase.rpc('admin_set_affiliate_default_commission', { p_dollars: dollars });
+      if (saved.error) throw saved.error;
+      _affiliateDefaultCommissionCents = typeof saved.data === 'number' ? saved.data : Math.round(dollars * 100);
+      AFFILIATE_COMMISSION_DOLLARS = _affiliateDefaultCommissionCents / 100;
+    } catch (e) {
+      setAdminAffiliateMsg(e.message || 'Could not save rate before applying', true);
+      return;
+    }
+  }
+  if (!confirm('Apply $' + AFFILIATE_COMMISSION_DOLLARS + '/sale to ALL affiliates?\n\nThis overwrites every locked rate.')) {
+    return;
+  }
+  setAdminAffiliateMsg('Applying $' + AFFILIATE_COMMISSION_DOLLARS + '/sale to everyone…', false);
+  try {
+    var { data, error } = await _supabase.rpc('admin_apply_default_commission_to_all');
+    if (error) throw error;
+    setAdminAffiliateMsg('Updated ' + (data || 0) + ' affiliate rate(s) to $' + AFFILIATE_COMMISSION_DOLLARS + '/sale.', false);
+    await loadAdminAffiliates();
+    await loadAffiliateSettingsPanel();
+  } catch (e) {
+    setAdminAffiliateMsg(e.message || 'Apply to all failed', true);
   }
 }
 var adminAffiliateFilter = 'pending';
@@ -2417,7 +2450,11 @@ async function loadAffiliateSettingsPanel() {
 
     if (!_myAffiliateRow) {
       body.innerHTML =
-        '<div style="color:#ccc;font-size:12px;line-height:1.45;margin-bottom:8px;">Earn $' + AFFILIATE_COMMISSION_DOLLARS + ' per paid unlock you refer. Payouts at $' + AFFILIATE_PAYOUT_THRESHOLD + '+ via PayPal, Venmo, or Cash App.</div>' +
+        '<div style="background:rgba(51,204,102,0.12);border:1px solid rgba(51,204,102,0.35);border-radius:8px;padding:10px 12px;margin-bottom:10px;">' +
+          '<div style="font-size:10px;color:#99bbaa;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Commission if approved</div>' +
+          '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:28px;letter-spacing:0.08em;color:#33cc66;line-height:1;">$' + AFFILIATE_COMMISSION_DOLLARS + '<span style="font-size:14px;letter-spacing:0.12em;margin-left:4px;">/ SALE</span></div>' +
+          '<div style="font-size:11px;color:#9abca8;margin-top:6px;">Payouts start at $' + AFFILIATE_PAYOUT_THRESHOLD + ' owed via PayPal, Venmo, or Cash App.</div>' +
+        '</div>' +
         '<input id="aff-apply-name" type="text" placeholder="Your name" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;">' +
         '<input id="aff-apply-website" type="url" placeholder="Website (optional if you have social)" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;">' +
         '<input id="aff-apply-channels" type="text" placeholder="Social / channel URLs (proof you can distribute)" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;">' +
@@ -2449,8 +2486,14 @@ async function loadAffiliateSettingsPanel() {
       '<div style="color:#fff;font-size:13px;font-weight:700;">' + escHtml(_myAffiliateRow.name || 'Affiliate') + '</div>' +
       '<div style="font-size:11px;font-weight:700;color:' + statusColor + ';text-transform:uppercase;letter-spacing:0.08em;">' + escHtml(_myAffiliateRow.status) + '</div>' +
       '</div>' +
-      '<div style="font-size:12px;color:#33cc66;font-family:ui-monospace,Menlo,Consolas,monospace;margin-bottom:8px;">Commission: $' + myRate + '/sale' +
-        (rateLocked ? ' (locked at approval)' : ' (locks when approved at current standard)') +
+      '<div style="background:rgba(51,204,102,0.12);border:1px solid rgba(51,204,102,0.35);border-radius:8px;padding:10px 12px;margin-bottom:10px;">' +
+        '<div style="font-size:10px;color:#99bbaa;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Your commission</div>' +
+        '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:28px;letter-spacing:0.08em;color:#33cc66;line-height:1;">$' + myRate + '<span style="font-size:14px;letter-spacing:0.12em;margin-left:4px;">/ SALE</span></div>' +
+        '<div style="font-size:11px;color:#9abca8;font-family:ui-monospace,Menlo,Consolas,monospace;margin-top:6px;">' +
+          (rateLocked
+            ? 'Locked on your profile — you earn $' + myRate + ' each time someone pays with your code.'
+            : 'Not locked yet — current standard is $' + AFFILIATE_COMMISSION_DOLLARS + '/sale and locks when you are approved.') +
+        '</div>' +
       '</div>';
 
     if (_myAffiliateRow.status === 'pending') {
