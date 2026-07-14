@@ -665,7 +665,7 @@ function initPaypalButton() {
         try {
           var ins = await _supabase.from('codes').insert({
             code: code, used: true, used_by: currentUser.id, used_at: new Date().toISOString(),
-            paypal_order_id: order.id, max_uses: 1, use_count: 1
+            paypal_order_id: order.id, max_uses: 1, use_count: 1, type: 'paid'
           });
           if (ins.error) throw ins.error;
           var up = await _supabase.from('profiles').update({ unlocked: true, code_used: code }).eq('id', currentUser.id);
@@ -1269,7 +1269,8 @@ async function generateAdminCode(presetUses) {
         code: fallback,
         used: false,
         max_uses: maxUses,
-        use_count: 0
+        use_count: 0,
+        type: 'free'
       });
       if (ins.error) {
         setAdminCodeMsg('Failed: ' + (error.message || ins.error.message) + ' — run the codes RLS SQL if needed.', true);

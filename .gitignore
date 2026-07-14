@@ -3,3 +3,6 @@
 
 # Local status notes with live API keys — never commit
 tsunami_complete_status.md
+
+# Supabase CLI local link cache
+supabase/.temp/

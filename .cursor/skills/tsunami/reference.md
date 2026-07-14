@@ -24,6 +24,8 @@ Row creation mechanism not documented in repo — confirm signup trigger or firs
 | `used_at` | Timestamp |
 | `stripe_session_id` | Set by webhook (optional) |
 | `paypal_order_id` | Set by PayPal flow (optional) |
+| `type` | NOT NULL — CHECK (`free` = promo/admin, `paid` = Stripe/PayPal) |
+| `max_uses` / `use_count` | Multi-use support |
 
 Admin generates unused codes (`used: false`). Stripe webhook inserts with `used: true` as receipt record.
 

@@ -72,6 +72,7 @@ Deno.serve(async (req) => {
         stripe_session_id: session.id,
         max_uses: 1,
         use_count: 1,
+        type: "paid",
       });
 
       // Unlock their account

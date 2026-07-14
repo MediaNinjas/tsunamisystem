@@ -81,8 +81,8 @@ begin
   end loop;
   v_code := v_code || v_seg;
 
-  insert into public.codes (code, used, max_uses, use_count)
-  values (v_code, false, v_max, 0);
+  insert into public.codes (code, used, max_uses, use_count, type)
+  values (v_code, false, v_max, 0, 'free');
 
   return v_code;
 end;
