@@ -3,10 +3,9 @@
 // Creates a Stripe Checkout session so a user can pay for Tsunami access.
 // Called from the app's front end when someone clicks the "Pay with Card" button.
 //
-// Uses Stripe's automatic_payment_methods, which means Stripe itself decides what
-// to show (cards, Apple Pay, Google Pay, Cash App Pay) based on the buyer's device
-// and what you've turned on in your Stripe Dashboard. You don't have to list them
-// individually here - just enable Cash App Pay in the Dashboard once (see setup doc).
+// Checkout Sessions do NOT support automatic_payment_methods (that is PaymentIntent-only).
+// Use payment_method_types instead. Apple Pay / Google Pay appear under "card" when
+// enabled in the Stripe Dashboard; add cashapp so Cash App Pay shows when available.
 //
 // Required secrets (set with: supabase secrets set KEY=value):
 //   STRIPE_SECRET_KEY   - your Stripe secret key (starts with sk_)
@@ -78,9 +77,9 @@ Deno.serve(async (req) => {
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      // Let Stripe decide what to show (cards, Apple Pay, Google Pay, Cash App Pay)
-      // based on Dashboard settings and the buyer's device - no manual list needed.
-      automatic_payment_methods: { enabled: true },
+      // Checkout API: list methods explicitly (automatic_payment_methods is invalid here).
+      // "card" also covers Apple Pay / Google Pay when those are enabled in the Dashboard.
+      payment_method_types: ["card", "cashapp"],
       line_items: [
         {
           price: Deno.env.get("TSUNAMI_PRICE_ID")!,
