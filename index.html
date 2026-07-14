@@ -90,8 +90,11 @@ input.tright.dark-input:focus { background:rgba(255,255,255,0.2); border-color:r
 .tright.due-date { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.5); font-size:clamp(7px,0.9vw,10px); letter-spacing:0.08em; text-transform:uppercase; }
 .tright.promo-val { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); color:rgba(255,255,255,0.4); font-size:clamp(8px,1vw,11px); justify-content:flex-end; padding-right:8px; }
 
-/* Settings accordions */
-.settings-acc { border:1px solid rgba(255,255,255,0.1); border-radius:10px; background:rgba(255,255,255,0.03); overflow:hidden; }
+/* Settings accordions — flex-shrink:0 so open panels don't squash siblings in the modal */
+.settings-acc {
+  border:1px solid rgba(255,255,255,0.1); border-radius:10px; background:rgba(255,255,255,0.03);
+  overflow:hidden; flex-shrink:0; width:100%; box-sizing:border-box;
+}
 .settings-acc + .settings-acc { margin-top:8px; }
 .settings-acc > summary {
   list-style:none; cursor:pointer; display:flex; flex-direction:column; gap:4px;
@@ -99,8 +102,11 @@ input.tright.dark-input:focus { background:rgba(255,255,255,0.2); border-color:r
 }
 .settings-acc > summary::-webkit-details-marker { display:none; }
 .settings-acc > summary::marker { content:''; }
-.settings-acc-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
-.settings-acc-label { font-family:'Bebas Neue',sans-serif; font-size:14px; letter-spacing:0.15em; color:#ccc; }
+.settings-acc-head { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; }
+.settings-acc-label {
+  font-family:'Bebas Neue',sans-serif; font-size:14px; letter-spacing:0.15em; color:#ccc;
+  flex:1; min-width:0; overflow:visible; white-space:normal;
+}
 .settings-acc-chevron {
   color:#33cc66; font-size:28px; line-height:0.85; font-weight:700;
   transition:transform 0.15s ease; flex-shrink:0; width:1.1em; text-align:center;
@@ -115,9 +121,26 @@ input.tright.dark-input:focus { background:rgba(255,255,255,0.2); border-color:r
 .settings-acc-body { padding:0 12px 12px; display:flex; flex-direction:column; gap:10px; }
 .settings-acc-body > .settings-acc-panel {
   background:rgba(255,255,255,0.05); border-radius:10px; padding:12px;
-  display:flex; flex-direction:column; gap:10px;
+  display:flex; flex-direction:column; gap:10px; min-width:0;
 }
-#settings-admin-section { margin-top:8px; }
+/* Nested affiliate sub-panels — compact, full-width stack */
+.settings-acc-sub {
+  border:1px solid rgba(255,255,255,0.08); border-radius:8px; background:rgba(0,0,0,0.22);
+  overflow:hidden; flex-shrink:0; width:100%; box-sizing:border-box;
+}
+.settings-acc-sub + .settings-acc-sub { margin-top:0; }
+.settings-acc-sub > summary {
+  list-style:none; cursor:pointer; display:flex; flex-direction:column; gap:2px;
+  padding:10px 12px; user-select:none; -webkit-user-select:none;
+}
+.settings-acc-sub > summary::-webkit-details-marker { display:none; }
+.settings-acc-sub > summary::marker { content:''; }
+.settings-acc-sub .settings-acc-label { font-size:13px; letter-spacing:0.12em; }
+.settings-acc-sub .settings-acc-chevron { font-size:16px; line-height:1; width:1em; }
+.settings-acc-sub[open] > summary .settings-acc-chevron { transform:rotate(90deg); color:#55ee88; }
+.settings-acc-sub[open] > summary .settings-acc-meta { display:none; }
+.settings-acc-sub > .settings-acc-body { padding:0 12px 12px; display:flex; flex-direction:column; gap:10px; }
+#settings-admin-section { margin-top:8px; flex-shrink:0; width:100%; }
 
 /* CARD BACK - PLANNER */
 .card-planner { width:100%; border-radius:20px; background:linear-gradient(145deg,#0a1628 0%,#0d2040 40%,#08101e 100%); border:1px solid rgba(0,136,255,0.25); box-shadow:0 12px 40px rgba(0,0,0,0.5); padding:14px; display:flex; flex-direction:column; gap:10px; }
@@ -603,11 +626,11 @@ input[type="date"] { color-scheme: dark; }
           </summary>
           <div class="settings-acc-body">
             <div class="settings-acc-panel">
-              <details class="settings-acc" open>
+              <details class="settings-acc-sub" open>
                 <summary>
                   <div class="settings-acc-head">
                     <span class="settings-acc-label">RATES</span>
-                    <span class="settings-acc-chevron">▶</span>
+                    <span class="settings-acc-chevron">›</span>
                   </div>
                   <div class="settings-acc-meta" id="acc-sum-aff-rates">standard · apply to all</div>
                 </summary>
@@ -624,11 +647,11 @@ input[type="date"] { color-scheme: dark; }
                 </div>
               </details>
 
-              <details class="settings-acc">
+              <details class="settings-acc-sub">
                 <summary>
                   <div class="settings-acc-head">
                     <span class="settings-acc-label">APPLICATIONS</span>
-                    <span class="settings-acc-chevron">▶</span>
+                    <span class="settings-acc-chevron">›</span>
                   </div>
                   <div class="settings-acc-meta" id="acc-sum-aff-apps">pending · AI Approve</div>
                 </summary>
@@ -652,11 +675,11 @@ input[type="date"] { color-scheme: dark; }
                 </div>
               </details>
 
-              <details class="settings-acc">
+              <details class="settings-acc-sub">
                 <summary>
                   <div class="settings-acc-head">
                     <span class="settings-acc-label">PAYOUTS</span>
-                    <span class="settings-acc-chevron">▶</span>
+                    <span class="settings-acc-chevron">›</span>
                   </div>
                   <div class="settings-acc-meta" id="acc-sum-aff-payouts">push · hold · auto @ threshold</div>
                 </summary>
@@ -674,11 +697,11 @@ input[type="date"] { color-scheme: dark; }
                 </div>
               </details>
 
-              <details class="settings-acc">
+              <details class="settings-acc-sub">
                 <summary>
                   <div class="settings-acc-head">
                     <span class="settings-acc-label">STATEMENTS</span>
-                    <span class="settings-acc-chevron">▶</span>
+                    <span class="settings-acc-chevron">›</span>
                   </div>
                   <div class="settings-acc-meta" id="acc-sum-aff-statements">monthly Dropbox archive</div>
                 </summary>
