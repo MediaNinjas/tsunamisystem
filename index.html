@@ -319,6 +319,9 @@ input[type="date"] { color-scheme: dark; }
 .acct-menu-item { font-family:'DM Sans',sans-serif; font-size:13px; color:#fff; padding:8px 10px; border-radius:8px; cursor:pointer; background:none; border:none; text-align:left; width:100%; }
 .acct-menu-item:hover { background:rgba(255,255,255,0.08); }
 .acct-menu-item.danger { color:#ff6666; }
+.backup-dd { position:relative; display:inline-block; }
+.backup-dd-menu { display:none; position:absolute; top:calc(100% + 6px); right:0; min-width:140px; background:#1a1a1a; border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:6px; z-index:10020; flex-direction:column; gap:2px; box-shadow:0 10px 28px rgba(0,0,0,0.45); }
+.backup-dd.open .backup-dd-menu { display:flex; }
 </style>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -462,9 +465,7 @@ input[type="date"] { color-scheme: dark; }
               <span style="color:#fff;font-size:13px;">Google Drive</span>
               <span id="gdrive-status" style="font-size:11px;color:#999;">Not connected</span>
             </div>
-            <div id="gdrive-actions" style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="connectGoogleDrive()">Connect</button>
-            </div>
+            <div id="gdrive-actions" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;"></div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:8px;">
@@ -472,9 +473,7 @@ input[type="date"] { color-scheme: dark; }
               <span style="color:#fff;font-size:13px;">Dropbox</span>
               <span id="dropbox-status" style="font-size:11px;color:#999;">Not connected</span>
             </div>
-            <div id="dropbox-actions" style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="connectDropbox()">Connect</button>
-            </div>
+            <div id="dropbox-actions" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;"></div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:8px;">
@@ -1381,6 +1380,36 @@ function applyRestoredCards(data) {
   if (typeof checkAllPromos === 'function') checkAllPromos();
 }
 
+function backupActionsDropdown(id, items) {
+  var rows = items.map(function(it) {
+    var cls = 'acct-menu-item' + (it.danger ? ' danger' : '');
+    return '<button type="button" class="' + cls + '" style="font-size:12px;" onclick="runBackupDdAction(\'' + id + '\',\'' + it.fn + '\')">' + it.label + '</button>';
+  }).join('');
+  return '<div class="backup-dd" id="' + id + '">' +
+    '<button type="button" class="acct-menu-item" style="padding:4px 10px;font-size:11px;width:auto;" onclick="toggleBackupDd(\'' + id + '\',event)">Options ▾</button>' +
+    '<div class="backup-dd-menu">' + rows + '</div>' +
+  '</div>';
+}
+
+function toggleBackupDd(id, e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  var el = document.getElementById(id);
+  if (!el) return;
+  var wasOpen = el.classList.contains('open');
+  closeAllBackupDd();
+  if (!wasOpen) el.classList.add('open');
+}
+
+function closeAllBackupDd() {
+  document.querySelectorAll('.backup-dd.open').forEach(function(el) { el.classList.remove('open'); });
+}
+
+function runBackupDdAction(id, fnName) {
+  closeAllBackupDd();
+  var fn = window[fnName];
+  if (typeof fn === 'function') fn();
+}
+
 function updateBackupUI() {
   var gStatus = document.getElementById('gdrive-status');
   var gActions = document.getElementById('gdrive-actions');
@@ -1392,10 +1421,11 @@ function updateBackupUI() {
   if (gToken) {
     gStatus.textContent = 'Connected';
     gStatus.style.color = '#33cc66';
-    gActions.innerHTML =
-      '<button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="backupToGoogleDrive()">Backup</button>' +
-      '<button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="restoreFromGoogleDrive()">Restore</button>' +
-      '<button class="acct-menu-item danger" style="padding:4px 10px;font-size:11px;" onclick="disconnectGoogleDrive()">Disconnect</button>';
+    gActions.innerHTML = backupActionsDropdown('gdrive-dd', [
+      { label: 'Backup', fn: 'backupToGoogleDrive' },
+      { label: 'Restore', fn: 'restoreFromGoogleDrive' },
+      { label: 'Disconnect', fn: 'disconnectGoogleDrive', danger: true }
+    ]);
   } else {
     gStatus.textContent = 'Not connected';
     gStatus.style.color = '#999';
@@ -1410,10 +1440,11 @@ function updateBackupUI() {
   } else if (dToken) {
     dStatus.textContent = 'Connected';
     dStatus.style.color = '#33cc66';
-    dActions.innerHTML =
-      '<button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="backupToDropbox()">Backup</button>' +
-      '<button class="acct-menu-item" style="padding:4px 10px;font-size:11px;" onclick="restoreFromDropbox()">Restore</button>' +
-      '<button class="acct-menu-item danger" style="padding:4px 10px;font-size:11px;" onclick="disconnectDropbox()">Disconnect</button>';
+    dActions.innerHTML = backupActionsDropdown('dropbox-dd', [
+      { label: 'Backup', fn: 'backupToDropbox' },
+      { label: 'Restore', fn: 'restoreFromDropbox' },
+      { label: 'Disconnect', fn: 'disconnectDropbox', danger: true }
+    ]);
   } else {
     dStatus.textContent = 'Not connected';
     dStatus.style.color = '#999';
@@ -1803,6 +1834,9 @@ document.addEventListener('click', function(e) {
   var menu = document.getElementById('acct-menu');
   if (menu && btn && !btn.contains(e.target) && !menu.contains(e.target)) {
     menu.classList.remove('open');
+  }
+  if (!e.target.closest || !e.target.closest('.backup-dd')) {
+    closeAllBackupDd();
   }
 });
 
