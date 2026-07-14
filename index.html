@@ -507,6 +507,10 @@ input[type="date"] { color-scheme: dark; }
             <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:0.12em;color:#33cc66;word-break:break-all;" id="admin-code-value"></div>
             <button class="acct-menu-item" style="margin-top:8px;padding:6px 10px;font-size:12px;" onclick="copyAdminCode()">Copy code</button>
           </div>
+          <div>
+            <div style="font-size:10px;color:#999;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;">Your promo codes</div>
+            <div id="admin-code-list" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto;"></div>
+          </div>
           <div id="admin-code-msg" style="font-size:11px;color:#999;min-height:14px;"></div>
         </div>
       </div>
@@ -1177,7 +1181,9 @@ function openSettings() {
   updateBackupFreqUI();
   var adminSection = document.getElementById('settings-admin-section');
   if (adminSection) {
-    adminSection.style.display = (currentUser.email === ADMIN_EMAIL) ? 'block' : 'none';
+    var isAdmin = currentUser.email === ADMIN_EMAIL;
+    adminSection.style.display = isAdmin ? 'block' : 'none';
+    if (isAdmin) loadAdminPromoCodes();
   }
   var adminMsg = document.getElementById('admin-code-msg');
   if (adminMsg) adminMsg.textContent = '';
@@ -1828,24 +1834,75 @@ function showAdminCodeResult(code, maxUses) {
   if (label) label.textContent = maxUses === 1 ? 'New single-use code' : ('New ' + maxUses + '-use code');
   value.textContent = code;
   wrap.style.display = 'block';
-  setAdminCodeMsg('Code ready — copy and share it.', false);
+  setAdminCodeMsg('Code ready — copy and share it. It stays in Your promo codes below.', false);
   var customEl = document.getElementById('admin-code-custom');
   if (customEl) customEl.value = '';
+  loadAdminPromoCodes();
 }
 
-function copyAdminCode() {
-  var value = document.getElementById('admin-code-value');
-  if (!value || !value.textContent) return;
-  var code = value.textContent;
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function loadAdminPromoCodes() {
+  var list = document.getElementById('admin-code-list');
+  if (!list || !currentUser || currentUser.email !== ADMIN_EMAIL) return;
+  list.innerHTML = '<div style="font-size:11px;color:#999;">Loading…</div>';
+  try {
+    var { data, error } = await _supabase
+      .from('codes')
+      .select('code, max_uses, use_count, used, created_at')
+      .eq('type', 'free')
+      .order('created_at', { ascending: false })
+      .limit(40);
+    if (error) throw error;
+    if (!data || !data.length) {
+      list.innerHTML = '<div style="font-size:11px;color:#999;">No promo codes yet.</div>';
+      return;
+    }
+    list.innerHTML = data.map(function(row) {
+      var maxUses = (typeof row.max_uses === 'number' && row.max_uses > 0) ? row.max_uses : 1;
+      var useCount = (typeof row.use_count === 'number' && row.use_count >= 0) ? row.use_count : 0;
+      var left = Math.max(0, maxUses - useCount);
+      var exhausted = row.used === true || left <= 0;
+      var statusColor = exhausted ? '#ff8888' : '#33cc66';
+      var statusText = exhausted ? 'Used up' : (left + ' left of ' + maxUses);
+      var codeJs = String(row.code || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 10px;">' +
+        '<div style="min-width:0;text-align:left;">' +
+          '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:16px;letter-spacing:0.1em;color:#fff;word-break:break-all;">' + escHtml(row.code) + '</div>' +
+          '<div style="font-size:11px;color:' + statusColor + ';">' + statusText + '</div>' +
+        '</div>' +
+        '<button type="button" class="acct-menu-item" style="padding:4px 8px;font-size:11px;width:auto;flex-shrink:0;" onclick="copyPromoCodeValue(\'' + codeJs + '\')">Copy</button>' +
+      '</div>';
+    }).join('');
+  } catch (e) {
+    list.innerHTML = '<div style="font-size:11px;color:#ff8888;">Could not load codes.</div>';
+    console.error('Tsunami: loadAdminPromoCodes failed:', e);
+  }
+}
+
+function copyPromoCodeValue(code) {
+  if (!code) return;
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(code).then(function() {
-      setAdminCodeMsg('Copied to clipboard.', false);
+      setAdminCodeMsg('Copied ' + code, false);
     }).catch(function() {
       window.prompt('Copy this code:', code);
     });
   } else {
     window.prompt('Copy this code:', code);
   }
+}
+
+function copyAdminCode() {
+  var value = document.getElementById('admin-code-value');
+  if (!value || !value.textContent) return;
+  copyPromoCodeValue(value.textContent);
 }
 
 function generateAdminCodeFromSettings() {
