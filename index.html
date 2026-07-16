@@ -2931,12 +2931,12 @@ function affiliateShareLink(code) {
   }
 }
 
-function payoutConnectedLabel(row) {
+function payoutSavedLabel(row) {
   var parts = [];
   if (row.payout_paypal) parts.push('PayPal');
   if (row.payout_venmo) parts.push('Venmo');
   if (row.payout_cashapp) parts.push('Cash App');
-  return parts.length ? parts.join(' · ') + ' connected' : 'No payout method yet';
+  return parts.length ? parts.join(' · ') + ' saved' : 'No payout method saved yet';
 }
 
 async function loadAffiliateSettingsPanel() {
@@ -2976,7 +2976,7 @@ async function loadAffiliateSettingsPanel() {
         '<input id="aff-apply-channels" type="text" placeholder="Social / channel URLs (proof you can distribute)" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;">' +
         '<textarea id="aff-apply-pitch" rows="2" placeholder="How will you promote Tsunami?" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;resize:vertical;font-family:\'DM Sans\',sans-serif;"></textarea>' +
         '<textarea id="aff-apply-traffic" rows="2" placeholder="Where does your traffic come from? Rough size?" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;resize:vertical;font-family:\'DM Sans\',sans-serif;"></textarea>' +
-        '<div style="font-size:10px;color:#999;letter-spacing:0.06em;text-transform:uppercase;margin:4px 0;">Connect payout (at least one)</div>' +
+        '<div style="font-size:10px;color:#999;letter-spacing:0.06em;text-transform:uppercase;margin:4px 0;">Save payout method (at least one)</div>' +
         '<input id="aff-apply-paypal" type="email" placeholder="PayPal email" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;">' +
         '<input id="aff-apply-venmo" type="text" placeholder="Venmo @username" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;">' +
         '<input id="aff-apply-cashapp" type="text" placeholder="Cash App $cashtag" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:8px;">' +
@@ -2996,7 +2996,7 @@ async function loadAffiliateSettingsPanel() {
       (_myAffiliateRow.status === 'denied' ? 'Denied' : 'Pending'));
     if (_myAffiliateRow.affiliate_code) affMeta += '  ·  ' + _myAffiliateRow.affiliate_code;
     affMeta += '  ·  $' + myRate + '/sale' + (rateLocked ? ' (locked)' : '');
-    affMeta += payoutBits.length ? ('  ·  ' + payoutBits.join('  ·  ')) : '  ·  no payout connected';
+    affMeta += payoutBits.length ? ('  ·  ' + payoutBits.join('  ·  ')) : '  ·  no payout saved';
     setSettingsAccMeta('acc-sum-affiliates', affMeta);
     var html = '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;">' +
       '<div style="color:#fff;font-size:13px;font-weight:700;">' + escHtml(_myAffiliateRow.name || 'Affiliate') + '</div>' +
@@ -3039,11 +3039,11 @@ async function loadAffiliateSettingsPanel() {
     }
 
     html += '<div style="font-size:10px;color:#999;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;">Payout methods</div>' +
-      '<div style="font-size:11px;color:#ccc;margin-bottom:6px;">' + escHtml(payoutConnectedLabel(_myAffiliateRow)) + '</div>' +
+      '<div style="font-size:11px;color:#ccc;margin-bottom:6px;">' + escHtml(payoutSavedLabel(_myAffiliateRow)) + '</div>' +
       '<input id="aff-payout-paypal" type="email" placeholder="PayPal email" value="' + escHtml(_myAffiliateRow.payout_paypal || '') + '" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;">' +
       '<input id="aff-payout-venmo" type="text" placeholder="Venmo @username" value="' + escHtml(_myAffiliateRow.payout_venmo || '') + '" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:6px;">' +
       '<input id="aff-payout-cashapp" type="text" placeholder="Cash App $cashtag" value="' + escHtml(_myAffiliateRow.payout_cashapp || '') + '" style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:#fff;padding:8px 10px;font-size:13px;margin-bottom:8px;">' +
-      '<button class="acct-menu-item" style="padding:8px 12px;font-size:12px;" onclick="saveMyAffiliatePayouts()">Save payout connections</button>' +
+      '<button class="acct-menu-item" style="padding:8px 12px;font-size:12px;" onclick="saveMyAffiliatePayouts()">Save payout methods</button>' +
       '<button class="acct-menu-item" style="padding:8px 12px;font-size:12px;margin-top:6px;" onclick="resubmitAffiliateApplication()">Resubmit application</button>' +
       '<div style="font-size:10px;color:#999;margin-top:4px;">Resubmit clears your locked rate and sets you pending so you can pick up the current standard ($' + AFFILIATE_COMMISSION_DOLLARS + ').</div>';
 
@@ -3088,7 +3088,7 @@ async function submitAffiliateApplication() {
     return;
   }
   if (!String(paypal).trim() && !String(venmo).trim() && !String(cashapp).trim()) {
-    setAffiliateMsg('Connect at least one payout method (PayPal, Venmo, or Cash App).', true);
+    setAffiliateMsg('Enter at least one payout method (PayPal, Venmo, or Cash App).', true);
     return;
   }
   setAffiliateMsg('Submitting…', false);
@@ -3242,7 +3242,7 @@ function renderAdminPayoutQueue() {
           (held ? 'HELD' : ('READY ' + moneyFromCents(readyCents))) +
         '</div>' +
       '</div>' +
-      '<div style="font-size:11px;color:#999;">' + escHtml(payoutConnectedLabel(row)) + '</div>' +
+      '<div style="font-size:11px;color:#999;">' + escHtml(payoutSavedLabel(row)) + '</div>' +
       '<div style="display:flex;flex-wrap:wrap;gap:6px;">' +
         (!held && readyCents > 0 ? '<button type="button" class="acct-menu-item" style="padding:5px 8px;font-size:11px;color:#33cc66;" onclick="adminPushReadyPayouts(\'' + row.id + '\')">Push</button>' : '') +
         '<button type="button" class="acct-menu-item" style="padding:5px 8px;font-size:11px;color:' + (held ? '#33cc66' : '#ffcc66') + ';" onclick="adminToggleAffiliateHold(\'' + row.id + '\',' + (held ? 'false' : 'true') + ')">' +
@@ -3276,7 +3276,7 @@ function renderAdminAffiliateList() {
         '<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;color:#999;">' + escHtml(row.status) + (held ? ' · held' : '') + '</div>' +
       '</div>' +
       '<div style="font-size:11px;color:#ccc;">' + escHtml(row.email) + '</div>' +
-      '<div style="font-size:11px;color:#999;">Payout: ' + escHtml(payoutConnectedLabel(row)) +
+      '<div style="font-size:11px;color:#999;">Payout: ' + escHtml(payoutSavedLabel(row)) +
         (row.payout_paypal ? '<br>PayPal: ' + escHtml(row.payout_paypal) : '') +
         (row.payout_venmo ? '<br>Venmo: ' + escHtml(row.payout_venmo) : '') +
         (row.payout_cashapp ? '<br>Cash App: ' + escHtml(row.payout_cashapp) : '') +
@@ -3344,7 +3344,7 @@ function runAffiliateQuickResearch(row) {
   }
 
   if (!row.payout_paypal && !row.payout_venmo && !row.payout_cashapp) {
-    notes.push('No payout method connected — prefer pending until payout is set.');
+    notes.push('No payout method saved — prefer pending until payout is set.');
     score = Math.min(score, 3);
   }
 
