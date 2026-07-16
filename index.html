@@ -655,7 +655,7 @@ input[type="date"] { color-scheme: dark; }
           <div class="settings-acc-panel" style="color:#fff;font-size:13px;line-height:1.5;">
             <div>Your card data is private to your account — locked down by database rules so no other user can see it.</div>
             <div>Login usernames/passwords you store are encrypted on your device before they are sent to the cloud. We can't read them, and neither can anyone who might access the database.</div>
-            <div>CSV exports leave out saved login secrets by default — you have to opt in if you want them included.</div>
+            <div>CSV exports leave out saved login credentials unless you check Include login credentials next to Download Blank Ledger.</div>
             <div>Want a clean wipe? Import a blank CSV to clear your cards. There is no reset button, so this is the intentional way to start fresh.</div>
             <div>New device tip: your encryption key lives on this device, so previously-saved login secrets won't decrypt on a new one. Re-enter them once and they re-encrypt locally.</div>
           </div>
@@ -866,17 +866,19 @@ input[type="date"] { color-scheme: dark; }
 <div id="ledger-view" style="display:none;">
   <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
     <button onclick="downloadCardsCsv()" style="background:rgba(0,180,100,0.15);border:1.5px solid rgba(0,180,100,0.4);color:#33cc66;font-family:&#39;Bebas Neue&#39;,sans-serif;font-size:14px;letter-spacing:0.1em;padding:8px 16px;border-radius:8px;cursor:pointer;">⬇ EXPORT CSV</button>
-    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#aaa;cursor:pointer;user-select:none;">
-      <input type="checkbox" id="csv-include-secrets" onchange="window._csvIncludeSecrets = this.checked;" style="cursor:pointer;">
-      Include login secrets
-    </label>
     <label style="background:rgba(0,100,255,0.15);border:1.5px solid rgba(0,100,255,0.4);color:#6699ff;font-family:&#39;Bebas Neue&#39;,sans-serif;font-size:14px;letter-spacing:0.1em;padding:8px 16px;border-radius:8px;cursor:pointer;">
       ⬆ IMPORT CSV
       <input type="file" accept=".csv" onchange="importCSV(this)" style="display:none;">
     </label>
-    <button onclick="downloadBlankTemplateCsv()" title="Zeroed starter file — import this anytime to wipe clean (no reset button)" style="background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.2);color:#ccc;font-family:&#39;Bebas Neue&#39;,sans-serif;font-size:14px;letter-spacing:0.1em;padding:8px 16px;border-radius:8px;cursor:pointer;">⬇ BLANK CSV</button>
     <button id="auto-tsunami-btn" class="auto-btn" onclick="toggleAutoTsunami()">⚡ AUTO TSUNAMI</button>
     <span id="import-msg" style="font-size:11px;color:#aaa;"></span>
+    <div style="display:flex;align-items:center;gap:10px;margin-left:auto;padding-left:28px;">
+      <button onclick="downloadBlankTemplateCsv()" title="Zeroed starter file — import this anytime to wipe clean (no reset button)" style="background:rgba(255,255,255,0.06);border:1.5px solid rgba(255,255,255,0.2);color:#ccc;font-family:&#39;Bebas Neue&#39;,sans-serif;font-size:14px;letter-spacing:0.1em;padding:8px 16px;border-radius:8px;cursor:pointer;">⬇ DOWNLOAD BLANK LEDGER</button>
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#aaa;cursor:pointer;user-select:none;white-space:nowrap;">
+        <input type="checkbox" id="csv-include-secrets" onchange="window._csvIncludeSecrets = this.checked;" style="cursor:pointer;">
+        Include login credentials
+      </label>
+    </div>
   </div>
   <div style="width:100%;box-sizing:border-box;overflow:clip;">
     <table class="ledger-table" id="ledger-table">
@@ -4868,12 +4870,9 @@ function downloadTextFile(filename, text) {
 function downloadCardsCsv() {
   var stamp = new Date().toISOString().slice(0, 10);
   var includeSecrets = !!window._csvIncludeSecrets;
-  if (includeSecrets) {
-    includeSecrets = confirm('This CSV will include your saved login usernames/passwords in plain text. Only continue if you will keep this file somewhere safe. Continue?');
-  }
   downloadTextFile('Tsunami-cards-' + stamp + '.csv', cardsToCsvText(cards, { includeSecrets: includeSecrets }));
   var msg = document.getElementById('import-msg');
-  if (msg) msg.textContent = includeSecrets ? 'CSV downloaded (includes login secrets).' : 'CSV downloaded.';
+  if (msg) msg.textContent = 'CSV downloaded.';
 }
 
 function downloadBlankTemplateCsv() {
