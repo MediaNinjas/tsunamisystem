@@ -17,7 +17,7 @@ description: >-
 | **Repo** | `https://github.com/MediaNinjas/tsunamisystem.git` |
 | **Live URL** | `https://tsunamiapp.medianinjas.tv` (primary); `https://tsunamisystem.netlify.app` (alias) |
 | **Not Tsunami** | Bare `medianinjas.tv` — separate AV site; never use for Stripe/OAuth redirects |
-| **Supabase** | Project ref `fxrhddcexwklyfzzgnvz` |
+| **Supabase** | Project ref `fxrhddcexwklyfzzgnvz` · API `https://api.tsunamiapp.medianinjas.tv` |
 
 ## Architecture
 
@@ -56,7 +56,7 @@ description: >-
 
 2. **`plannerState` not persisted** — Payment planner slots live in memory only. `saveCards()` persists `cards` array, not `plannerState`. Committed payments update balance (saved); slot refs/dates/commits are lost on refresh.
 
-3. **OAuth / Stripe URLs** — must be `https://tsunamisystem.netlify.app` only. Never `medianinjas.tv` (unrelated AV site).
+3. **OAuth / Stripe URLs** — primary `https://tsunamiapp.medianinjas.tv` (also allow Netlify alias). Never bare `medianinjas.tv` (unrelated AV site).
 
 4. **EmailJS dead code** — `emailjs` initialized in `<head>`; CSV backup uses `/.netlify/functions/send-backup` instead.
 
