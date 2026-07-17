@@ -1835,8 +1835,10 @@ function cacheDriveTokenFromSession(session, opts) {
   // mean the user connected Drive. Only store it when they explicitly went
   // through Connect Drive, or when renewing an existing saved connection.
   var alreadyConnected = false;
+  var pendingConnect = false;
   try { alreadyConnected = !!localStorage.getItem('tsunami_gdrive_token_' + uid); } catch (e) {}
-  if (!opts.explicit && !alreadyConnected) return;
+  try { pendingConnect = localStorage.getItem('tsunami_gdrive_pending_uid') === uid; } catch (e) {}
+  if (!opts.explicit && !pendingConnect && !alreadyConnected) return;
   var payload = {
     token: session.provider_token,
     refresh: session.provider_refresh_token || null,
@@ -1845,6 +1847,7 @@ function cacheDriveTokenFromSession(session, opts) {
   };
   try {
     localStorage.setItem('tsunami_gdrive_token_' + uid, JSON.stringify(payload));
+    localStorage.removeItem('tsunami_gdrive_pending_uid');
   } catch (e) {}
 }
 
@@ -2120,6 +2123,9 @@ function updateBackupUI() {
 
 async function connectGoogleDrive() {
   // Per-user Drive: add drive.file to Google OAuth via Supabase (not a service account).
+  try {
+    if (currentUser && currentUser.id) localStorage.setItem('tsunami_gdrive_pending_uid', currentUser.id);
+  } catch (e) {}
   setBackupMsg('Opening Google to allow Drive access...', false);
   const { error } = await _supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -2132,7 +2138,10 @@ async function connectGoogleDrive() {
       }
     }
   });
-  if (error) setBackupMsg('Could not start Google Drive connect: ' + error.message, true);
+  if (error) {
+    try { localStorage.removeItem('tsunami_gdrive_pending_uid'); } catch (e) {}
+    setBackupMsg('Could not start Google Drive connect: ' + error.message, true);
+  }
 }
 
 function disconnectGoogleDrive() {
@@ -3930,7 +3939,9 @@ window.addEventListener('load', async function() {
   var stripeCancel = window.location.search.includes('stripe_cancel=1');
   var wantCardsView = stripeReturn || window.location.hash === '#cards';
   var connectDriveReturn = window.location.search.includes('connect_drive=1');
-  if (stripeReturn || stripeCancel || connectDriveReturn || window.location.hash === '#cards') {
+  // Keep the Drive return query in place until Supabase has finished reading
+  // its OAuth callback. Removing it here can race getSession and lose the token.
+  if (stripeReturn || stripeCancel || window.location.hash === '#cards') {
     window.history.replaceState({}, document.title, window.location.pathname);
   }
   // Handle Dropbox OAuth callback (distinct from Supabase's own OAuth hash below)
@@ -3967,7 +3978,10 @@ window.addEventListener('load', async function() {
   // Regular session check (also handles Stripe return after session is available)
   const { data: { session } } = await _supabase.auth.getSession();
   if (session && session.user) {
-    cacheDriveTokenFromSession(session);
+    cacheDriveTokenFromSession(session, { explicit: connectDriveReturn });
+    if (connectDriveReturn) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
     if (stripeReturn) {
       currentUser = session.user;
       var alreadyUnlocked = await checkUnlocked(session.user);
