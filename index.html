@@ -4505,7 +4505,7 @@ function buildCardEl(c, slotNum) {
                 '<div class="po-sg-cell"><div class="po-sg-label">YOUR/MO</div><div class="po-sg-value" id="pot-'+cid+'">--</div></div>' +
         '<div class="po-sg-cell"><div class="po-sg-label">GAP</div><div class="po-sg-value" id="pog-'+cid+'">--</div></div>' +
         '<div class="po-sg-cell"><div class="po-sg-label">REMAINING BAL</div><div class="po-sg-value" id="porb-'+cid+'">'+(c.balance?'$'+Math.round(c.balance):'--')+'</div></div>' +
-        '<div class="po-sg-cell po-sg-wide"><div class="po-sg-label">INTEREST EST <span style="opacity:0.5;">@ <input type="number" id="fld-papr2-'+cid+'" value="'+(c.promoApr||30)+'" min="1" max="99" style="width:34px;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.3);color:#ffaa33;font-size:9px;text-align:center;outline:none;" oninput="setPromoApr('+cid+',this.value)">%</span></div><div class="po-sg-value orange" id="poit-'+cid+'">'+(c.promoMonths?(function(){var apr=parseFloat(c.promoApr)||30;return '$'+Math.round((c.balance||0)*(apr/12/100)*c.promoMonths)+' est';})():'--')+'</div></div>' +
+        '<div class="po-sg-cell po-sg-wide"><div class="po-sg-label">INTEREST OWED IF MISSED <span style="opacity:0.5;">@ <input type="number" id="fld-papr2-'+cid+'" value="'+(c.promoApr||30)+'" min="1" max="99" style="width:34px;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.3);color:#ffaa33;font-size:9px;text-align:center;outline:none;" oninput="setPromoApr('+cid+',this.value)">%</span></div><div class="po-sg-value orange" id="poit-'+cid+'">'+(c.promoMonths?(function(){var apr=parseFloat(c.promoApr)||30;return '$'+Math.round((c.balance||0)*(apr/12/100)*c.promoMonths);})():'--')+'</div></div>' +
       '</div>' +
 
       '<div class="po-divider"></div>' +
@@ -4788,12 +4788,12 @@ function setPromoMonths(cardId, val) {
   if (endEl) endEl.textContent = fmtMonthYear(c.promoEnd);
   var promoEndRow = document.getElementById("promo-end-"+cardId);
   if (promoEndRow) promoEndRow.textContent = fmtMonthYear(c.promoEnd);
-  // Update interest estimate only - don't touch remaining balance
+  // Update interest-owed-if-missed amount only - don't touch remaining balance
   var itEl = document.getElementById("poit-"+cardId);
   if (itEl) {
     var apr = parseFloat(c.promoApr)||30;
     var intEst = (c.balance||0) * (apr/12/100) * c.promoMonths;
-    itEl.textContent = "$"+Math.round(intEst)+" est";
+    itEl.textContent = "$"+Math.round(intEst);
   }
   saveCards();
   checkPromoWarning(cardId);
@@ -4803,11 +4803,11 @@ function setPromoApr(cardId, val) {
   var c = cards.find(function(x){return x.id==cardId;});
   if (!c) return;
   c.promoApr = parseFloat(val)||0;
-  // Update interest estimate
+  // Update interest-owed-if-missed amount
   var itEl = document.getElementById("poit-"+cardId);
   if (itEl) {
     var intEst = (c.balance||0) * (c.promoApr/12/100) * (c.promoMonths||0);
-    itEl.textContent = "$"+Math.round(intEst)+" est";
+    itEl.textContent = "$"+Math.round(intEst);
   }
   // Keep the APR % input (top grid) and the bottom interest-row adjuster in sync
   ["fld-papr-"+cardId, "fld-papr2-"+cardId].forEach(function(id) {
