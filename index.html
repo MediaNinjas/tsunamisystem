@@ -1823,9 +1823,17 @@ function startAutoBackupWatcher() {
   });
 }
 
-function cacheDriveTokenFromSession(session) {
+function cacheDriveTokenFromSession(session, opts) {
+  opts = opts || {};
   if (!session || !session.provider_token) return;
   var uid = (session.user && session.user.id) || (currentUser && currentUser.id) || null;
+  if (!uid) return;
+  // Signing in with Google always yields a provider token — that alone does NOT
+  // mean the user connected Drive. Only store it when they explicitly went
+  // through Connect Drive, or when renewing an existing saved connection.
+  var alreadyConnected = false;
+  try { alreadyConnected = !!localStorage.getItem('tsunami_gdrive_token_' + uid); } catch (e) {}
+  if (!opts.explicit && !alreadyConnected) return;
   var payload = {
     token: session.provider_token,
     refresh: session.provider_refresh_token || null,
@@ -1833,7 +1841,7 @@ function cacheDriveTokenFromSession(session) {
     user_id: uid
   };
   try {
-    if (uid) localStorage.setItem('tsunami_gdrive_token_' + uid, JSON.stringify(payload));
+    localStorage.setItem('tsunami_gdrive_token_' + uid, JSON.stringify(payload));
   } catch (e) {}
 }
 
@@ -3868,7 +3876,7 @@ window.addEventListener('load', async function() {
   if (window.location.hash && window.location.hash.includes('access_token')) {
     const { data, error } = await _supabase.auth.getSession();
     if (data && data.session) {
-      cacheDriveTokenFromSession(data.session);
+      cacheDriveTokenFromSession(data.session, { explicit: connectDriveReturn });
       window.history.replaceState({}, document.title, window.location.pathname);
       await routeAfterSignIn(data.session.user);
       if (connectDriveReturn) {
