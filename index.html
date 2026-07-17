@@ -2169,6 +2169,11 @@ function connectDropbox() {
     setBackupMsg('Dropbox App Key is not configured yet.', true);
     return;
   }
+  // Remember who started the connect — the OAuth return lands on a fresh page
+  // load where currentUser isn't set yet, so the token must be tied to this uid.
+  try {
+    if (currentUser && currentUser.id) localStorage.setItem('tsunami_dropbox_pending_uid', currentUser.id);
+  } catch (e) {}
   var redirectUri = window.location.origin + '/';
   // Do NOT pass &scope= here. Dropbox will grant whatever scopes are enabled
   // on the app (Permissions tab). Requesting scopes that aren't enabled returns:
@@ -3864,11 +3869,20 @@ window.addEventListener('load', async function() {
     window.history.replaceState({}, document.title, window.location.pathname);
   }
   // Handle Dropbox OAuth callback (distinct from Supabase's own OAuth hash below)
+  var dropboxReturn = false;
   if (window.location.hash && window.location.hash.includes('state=tsunami_dropbox')) {
     var params = new URLSearchParams(window.location.hash.substring(1));
     var dbToken = params.get('access_token');
-    if (dbToken) {
-      setDropboxToken(dbToken);
+    // currentUser isn't set yet on this fresh page load — use the uid we
+    // stashed when the user hit Connect, so the token lands on their account.
+    var pendingUid = null;
+    try {
+      pendingUid = localStorage.getItem('tsunami_dropbox_pending_uid');
+      localStorage.removeItem('tsunami_dropbox_pending_uid');
+    } catch (e) {}
+    if (dbToken && pendingUid) {
+      try { localStorage.setItem(dropboxStorageKey(pendingUid), dbToken); } catch (e) {}
+      dropboxReturn = true;
     }
     window.history.replaceState({}, document.title, window.location.pathname);
   }
@@ -3909,6 +3923,8 @@ window.addEventListener('load', async function() {
     }
     if (connectDriveReturn) {
       setTimeout(function(){ openSettings(); setBackupMsg(getGdriveToken() ? 'Google Drive connected to your account.' : 'Signed in — if Drive Backup is still disconnected, tap Connect again and allow Drive.', false); updateBackupUI(); }, 400);
+    } else if (dropboxReturn) {
+      setTimeout(function(){ openSettings(); setBackupMsg(getDropboxToken() ? 'Dropbox connected to your account.' : 'Signed in — tap Connect on Dropbox again if it still shows disconnected.', false); updateBackupUI(); }, 400);
     }
   } else if (stripeReturn || stripeCancel) {
     showAuthScreen('Sign in to finish activating your purchase.', 'error');
