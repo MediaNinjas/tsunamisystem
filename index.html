@@ -1999,6 +1999,56 @@ function runBackupDdAction(id, fnName) {
   if (typeof fn === 'function') fn();
 }
 
+function backupEmailKey(service) {
+  return 'tsunami_' + service + '_email_' + ((currentUser && currentUser.id) || '');
+}
+
+async function fetchDropboxAccountEmail() {
+  if (!currentUser || !currentUser.id) return null;
+  try {
+    var cached = localStorage.getItem(backupEmailKey('dropbox'));
+    if (cached) return cached;
+  } catch (e) {}
+  var token = getDropboxToken();
+  if (!token) return null;
+  try {
+    var res = await fetch('https://api.dropboxapi.com/2/users/get_current_account', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) return null;
+    var data = await res.json();
+    if (data && data.email) {
+      try { localStorage.setItem(backupEmailKey('dropbox'), data.email); } catch (e) {}
+      return data.email;
+    }
+  } catch (e) {}
+  return null;
+}
+
+async function fetchDriveAccountEmail() {
+  if (!currentUser || !currentUser.id) return null;
+  try {
+    var cached = localStorage.getItem(backupEmailKey('gdrive'));
+    if (cached) return cached;
+  } catch (e) {}
+  var token = getGdriveToken();
+  if (!token) return null;
+  try {
+    var res = await fetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) return null;
+    var data = await res.json();
+    var email = data && data.user && data.user.emailAddress;
+    if (email) {
+      try { localStorage.setItem(backupEmailKey('gdrive'), email); } catch (e) {}
+      return email;
+    }
+  } catch (e) {}
+  return null;
+}
+
 function updateBackupUI() {
   var gStatus = document.getElementById('gdrive-status');
   var gActions = document.getElementById('gdrive-actions');
@@ -2011,6 +2061,11 @@ function updateBackupUI() {
   if (gToken || gStored) {
     gStatus.textContent = gToken ? 'Connected' : 'Saved — will refresh';
     gStatus.style.color = '#33cc66';
+    fetchDriveAccountEmail().then(function(email) {
+      if (email && (getGdriveToken() || hasStoredGdriveConnection())) {
+        gStatus.textContent = (gToken ? 'Connected' : 'Saved') + ' — ' + email;
+      }
+    });
     gActions.innerHTML = backupActionsDropdown('gdrive-dd', [
       { label: 'Backup', fn: 'backupToGoogleDrive' },
       { label: 'Restore', fn: 'restoreFromGoogleDrive' },
@@ -2030,6 +2085,11 @@ function updateBackupUI() {
   } else if (dToken) {
     dStatus.textContent = 'Connected';
     dStatus.style.color = '#33cc66';
+    fetchDropboxAccountEmail().then(function(email) {
+      if (email && getDropboxToken()) {
+        dStatus.textContent = 'Connected — ' + email;
+      }
+    });
     dActions.innerHTML = backupActionsDropdown('dropbox-dd', [
       { label: 'Backup', fn: 'backupToDropbox' },
       { label: 'Restore', fn: 'restoreFromDropbox' },
@@ -2076,6 +2136,7 @@ function disconnectGoogleDrive() {
   try {
     localStorage.removeItem('tsunami_gdrive_token');
     if (currentUser && currentUser.id) localStorage.removeItem(gdriveStorageKey(currentUser.id));
+    localStorage.removeItem(backupEmailKey('gdrive'));
   } catch (e) {}
   setBackupMsg('Google Drive disconnected for backups (you stay signed in).', false);
   updateBackupUI();
@@ -2191,6 +2252,7 @@ function disconnectDropbox() {
   try {
     localStorage.removeItem('tsunami_dropbox_token');
     if (currentUser && currentUser.id) localStorage.removeItem(dropboxStorageKey(currentUser.id));
+    localStorage.removeItem(backupEmailKey('dropbox'));
   } catch (e) {}
   setBackupMsg('Dropbox disconnected.', false);
   updateBackupUI();
