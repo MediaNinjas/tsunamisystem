@@ -283,13 +283,13 @@ input.tright.dark-input:focus { background:rgba(255,255,255,0.2); border-color:r
 .po-ig-input { width:100%; box-sizing:border-box; background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; font-family:'DM Sans',sans-serif; font-size:11px; padding:2px 3px; text-align:center; outline:none; }
 .po-ig-input:focus { border-color:rgba(100,200,255,0.6); }
 .po-ig-value { background:rgba(255,255,255,0.08); border-radius:4px; padding:2px 3px; font-family:'Bebas Neue',sans-serif; font-size:10px; color:#22ccff; text-align:center; }
-.po-stat-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:3px; }
-.po-sg-cell { background:rgba(255,255,255,0.08); border-radius:4px; padding:2px 5px; }
+.po-stat-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px; }
+.po-sg-cell { background:rgba(255,255,255,0.08); border-radius:4px; padding:2px 4px; min-width:0; }
 /* Interest row: APR adjuster bottom-left, amount owed to its right — full width so it never clips off the 16:9 card. */
 .po-sg-cell.po-sg-wide { grid-column:1/-1; display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .po-sg-cell.po-sg-wide .po-sg-value { margin-top:0; }
-.po-sg-label { font-size:6px; color:rgba(255,255,255,0.5); letter-spacing:0.06em; text-transform:uppercase; }
-.po-sg-value { font-family:'Bebas Neue',sans-serif; font-size:12px; color:#fff; margin-top:0; }
+.po-sg-label { font-size:6px; color:rgba(255,255,255,0.5); letter-spacing:0.04em; text-transform:uppercase; }
+.po-sg-value { font-family:'Bebas Neue',sans-serif; font-size:11px; color:#fff; margin-top:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .po-sg-value.gap { color:#ffdd44; }
 .po-sg-value.orange { color:#ffaa33; }
 .po-input-field:focus { border-color:rgba(100,200,255,0.6); }
