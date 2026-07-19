@@ -113,13 +113,14 @@ input.ed-promo { border:none; outline:none; font-family:'DM Sans',sans-serif; co
 .tvalue.blue { background:#b8d0f8; color:#112266; font-weight:700; }
 .tright { display:flex; align-items:center; justify-content:center; padding:1px 6px; border-radius:5px; font-size:clamp(7px, 3.5cqh, 12px); font-weight:700; text-align:center; line-height:1.1; min-height:0; }
 .tright.empty-cell { background:transparent; }
-.tright.tsunami-red { background:linear-gradient(135deg,#cc1111,#aa0000); color:#fff; font-family:'Bebas Neue',sans-serif; font-size:clamp(11px,1.5vw,16px); letter-spacing:0.1em; }
+.tright.tsunami-red { background:linear-gradient(135deg,#cc1111,#aa0000); color:#fff; font-family:'Bebas Neue',sans-serif; font-size:clamp(7px, 3.5cqh, 12px); letter-spacing:0.1em; }
 .tright.tsunami-green { background:#1d9944; color:#fff; font-weight:700; justify-content:flex-end; padding-right:8px; }
-.tright.credentials { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.5); font-size:clamp(7px,0.9vw,10px); letter-spacing:0.1em; text-transform:uppercase; }
+.tright.credentials { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.5); font-size:clamp(7px, 3.2cqh, 10px); letter-spacing:0.1em; text-transform:uppercase; }
 .tright.dark-box { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); }
-input.tright.dark-input { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); color:#fff; font-family:'DM Sans',sans-serif; text-align:center; outline:none; font-size:clamp(8px,1vw,11px); padding:3px 6px; }
+input.tright.dark-input { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); color:#fff; font-family:'DM Sans',sans-serif; text-align:center; outline:none; font-size:clamp(7px, 3.2cqh, 11px); padding:1px 4px; max-height:100%; box-sizing:border-box; }
 input.tright.dark-input:focus { background:rgba(255,255,255,0.2); border-color:rgba(100,200,255,0.6); }
-.tright.due-date { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.5); font-size:clamp(7px,0.9vw,10px); letter-spacing:0.08em; text-transform:uppercase; }
+input.tright.dark-input[type="date"] { font-size:clamp(6px, 2.8cqh, 10px); }
+.tright.due-date { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.5); font-size:clamp(7px, 3.2cqh, 10px); letter-spacing:0.08em; text-transform:uppercase; }
 .tright.promo-val { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); color:rgba(255,255,255,0.4); font-size:clamp(8px,1vw,11px); justify-content:flex-end; padding-right:8px; }
 
 /* Settings accordions — flex-shrink:0 so open panels don't squash siblings; overflow visible when open so Options menus aren’t clipped */
@@ -4725,8 +4726,16 @@ function render() {
 
 function updateTotals() {
   var a = cards.filter(function(c){return !c.empty&&!c.paid;});
+  var target = getTarget();
+  var targetId = target ? target.id : null;
   var principle=a.reduce(function(s,c){return s+c.balance;},0);
-  var monthly=a.reduce(function(s,c){return s+(c.minPayment||0)+(c.interest||0)+(c.tsunami||0);},0);
+  // Total Monthly = this month's cash out: every card's min+interest,
+  // plus tsunami only on the active payoff card (the planner target).
+  var monthly=a.reduce(function(s,c){
+    var row = (c.minPayment||0)+(c.interest||0);
+    if (targetId != null && c.id === targetId) row += (c.tsunami||0);
+    return s+row;
+  },0);
   var available=a.reduce(function(s,c){return s+(c.limit-c.balance);},0);
   var tsunami=a.reduce(function(s,c){return s+(c.tsunami||0);},0);
   var f=function(n){return "$"+n.toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:0});};
