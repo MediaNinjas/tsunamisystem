@@ -30,7 +30,7 @@ html { touch-action:manipulation; scrollbar-gutter:stable; overflow-x:hidden; }
 .sort-btn { flex-shrink:0; background:#1a1a1a; border:1.5px solid #333; border-radius:100px; padding:8px 16px; font-size:12px; font-weight:600; color:#888; cursor:pointer; white-space:nowrap; font-family:'DM Sans',sans-serif; }
 .sort-btn.active { background:#fff; border-color:#fff; color:#111; }
 
-.summary-bar { display:flex; background:rgba(255,255,255,0.04); outline:1px solid #222; border-radius:12px; margin-bottom:20px; }
+.summary-bar { display:flex; background:rgba(255,255,255,0.04); outline:1px solid #222; border-radius:12px; margin-bottom:8px; }
 .sum-item { flex:1; padding:12px 16px; border-right:1px solid #222; text-align:center; }
 .sum-item:last-child { border-right:none; }
 .sum-label { font-size:8px; letter-spacing:0.25em; color:#aaa; text-transform:uppercase; margin-bottom:3px; }
@@ -39,6 +39,21 @@ html { touch-action:manipulation; scrollbar-gutter:stable; overflow-x:hidden; }
 .sum-value.blue { color:#6699ff; }
 .sum-value.green { color:#33cc77; }
 .sum-value.cyan { color:#22ccff; }
+
+/* Slim launch strip between totals and cards — sits over first-card column, does not hang into the card. */
+.planner-launch {
+  display:none; margin:0 0 10px; min-height:0;
+  grid-template-columns:1fr; gap:14px; align-items:center;
+}
+.planner-launch.show { display:grid; }
+.planner-launch-btn {
+  justify-self:center; width:fit-content; max-width:100%;
+  background:linear-gradient(135deg,#0055cc,#0088ff); color:#fff; border:none;
+  font-family:'Bebas Neue',sans-serif; font-size:10px; letter-spacing:0.18em;
+  padding:2px 12px; height:18px; line-height:14px; border-radius:8px;
+  cursor:pointer; white-space:nowrap; box-shadow:0 2px 8px rgba(0,100,220,0.35);
+}
+.planner-launch-btn:hover { filter:brightness(1.08); }
 
 .card-row { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
 .row-divider { height:3px; background:linear-gradient(90deg,transparent,#1a2535 30%,#0a4080 50%,#1a2535 70%,transparent); border-radius:2px; }
@@ -63,7 +78,7 @@ html { touch-action:manipulation; scrollbar-gutter:stable; overflow-x:hidden; }
   display:flex; flex-direction:column; min-height:0;
 }
 
-.planner-badge { position:absolute; top:0; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,#0055cc,#0088ff); color:#fff; font-family:'Bebas Neue',sans-serif; font-size:10px; letter-spacing:0.2em; padding:4px 14px; border-radius:0 0 10px 10px; z-index:30; white-space:nowrap; cursor:pointer; box-shadow:0 2px 10px rgba(0,100,220,0.4); }
+.planner-badge { display:none; } /* legacy — planner opens from .planner-launch above the grid */
 
 .card-header {
   display:flex; align-items:stretch; gap:6px; position:relative; z-index:2; flex-shrink:0;
@@ -333,16 +348,20 @@ input.ledger-tsunami { -webkit-text-fill-color:#fff !important; color:#fff !impo
   .row-group { display: contents !important; }
   .row-divider { display: none; }
   #grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; align-items: start; }
+  .planner-launch { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .planner-launch-btn { justify-self: center; grid-column: 1; }
   .card-row { display: contents !important; gap: 0 !important; padding: 0 !important; }
   .tsunami-card.empty { display: none; }
 }
 
 @media (min-width: 900px) {
   #grid { grid-template-columns: repeat(3, 1fr); }
+  .planner-launch { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (min-width: 1200px) {
   #grid { grid-template-columns: repeat(4, 1fr); }
+  .planner-launch { grid-template-columns: repeat(4, 1fr); }
 }
 input[type="date"] { color-scheme: dark; }
 
@@ -866,6 +885,10 @@ input[type="date"] { color-scheme: dark; }
   <div class="sum-item"><div class="sum-label">Total Monthly</div><div class="sum-value blue" id="s-monthly">—</div></div>
   <div class="sum-item"><div class="sum-label">Total Available</div><div class="sum-value green" id="s-available">—</div></div>
   <div class="sum-item"><div class="sum-label">Total Tsunami</div><div class="sum-value cyan" id="s-tsunami">—</div></div>
+</div>
+
+<div id="planner-launch" class="planner-launch" aria-hidden="true">
+  <button type="button" id="planner-launch-btn" class="planner-launch-btn">&#128203; PAYMENT PLANNER</button>
 </div>
 
 <div id="grid"></div>
@@ -3704,6 +3727,7 @@ function showCardsView() {
   if (btn) btn.textContent = '\u2630 LEDGER';
   if (sb) sb.style.visibility = 'visible';
   if (sumbar) sumbar.style.visibility = 'visible';
+  if (typeof updatePlannerLaunch === 'function') updatePlannerLaunch();
 }
 
 async function launchApp(opts) {
@@ -4541,15 +4565,7 @@ function buildCardEl(c, slotNum) {
     card.appendChild(overlay);
   }
 
-  // Badge - appended AFTER innerHTML is set, so listener doesn't get wiped
-  if (isTarget) {
-    var badge = document.createElement("div");
-    badge.className = "planner-badge";
-    badge.innerHTML = "&#128203; PAYMENT PLANNER";
-    badge.addEventListener("click", function(){ showPlanner(cid); });
-    card.insertBefore(badge, card.firstChild);
-  }
-
+  // Planner opens from the strip above the grid — do not hang a badge into the card.
   return card;
 }
 
@@ -4632,8 +4648,22 @@ function wireCardInputs(c) {
 
 function wireCard(c) {
   if (c.empty) return;
-  var badge = document.querySelector("#slot-"+c.id+" .planner-badge");
-  if (badge) badge.addEventListener("click", function(){ showPlanner(c.id); });
+}
+
+function updatePlannerLaunch() {
+  var wrap = document.getElementById('planner-launch');
+  var btn = document.getElementById('planner-launch-btn');
+  if (!wrap || !btn) return;
+  var target = getTarget();
+  if (!target) {
+    wrap.classList.remove('show');
+    wrap.setAttribute('aria-hidden', 'true');
+    btn.onclick = null;
+    return;
+  }
+  wrap.classList.add('show');
+  wrap.setAttribute('aria-hidden', 'false');
+  btn.onclick = function(){ showPlanner(target.id); };
 }
 
 var currentSortMode = "";
@@ -4722,6 +4752,7 @@ function render() {
   });
 
   updateTotals();
+  updatePlannerLaunch();
 }
 
 function updateTotals() {
@@ -4962,6 +4993,8 @@ function toggleView() {
     ledger.style.display = "block";
     if (btn) btn.textContent = "\u25a0 CARDS";
     if (btn2) btn2.textContent = "\u25a0 CARDS";
+    var pl = document.getElementById('planner-launch');
+    if (pl) { pl.classList.remove('show'); pl.setAttribute('aria-hidden', 'true'); }
     renderLedger();
   } else {
     currentView = "cards";
