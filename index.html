@@ -4148,19 +4148,17 @@ function showCard(cardId) {
   closePlanner();
   var slot = document.getElementById("slot-"+cardId);
   if (!slot) return;
-  // If a previous planner build wiped this slot, restore the card.
-  if (!slot.querySelector(".tsunami-card")) {
-    slot.innerHTML = "";
-    var card = cards.find(function(c){return c.id===cardId;});
-    if (!card) return;
-    var active = cards.filter(function(c){return !c.empty;});
-    var pos = active.findIndex(function(c){return c.id===cardId;});
-    var slotNum = pos >= 0 ? pos+1 : card.id;
-    var el = buildCardEl(card, slotNum);
-    slot.appendChild(el);
-    wireCard(card);
-    wireCardInputs(card);
-  }
+  slot.innerHTML = "";
+  var card = cards.find(function(c){return c.id===cardId;});
+  if (!card) return;
+  // Find current position in non-empty cards
+  var active = cards.filter(function(c){return !c.empty;});
+  var pos = active.findIndex(function(c){return c.id===cardId;});
+  var slotNum = pos >= 0 ? pos+1 : card.id;
+  var el = buildCardEl(card, slotNum);
+  slot.appendChild(el);
+  wireCard(card);
+  wireCardInputs(card);
 }
 
 function buildPlannerEl(cardId) {
