@@ -239,13 +239,13 @@ input.tright.dark-input[type="date"] { font-size:clamp(8px, 3.8cqh, 12px); }
 .sa-value { font-family:'Bebas Neue',sans-serif; font-size:16px; color:#22ccff; }
 
 .slot-btn-wrap { display:flex; gap:5px; flex-shrink:0; }
-.slot-save-btn { flex:1; padding:8px 10px; border-radius:7px; border:1px solid rgba(0,136,255,0.4); background:rgba(0,136,255,0.15); color:#22ccff; font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:0.1em; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:700; }
+.slot-save-btn { flex:1; min-width:0; padding:8px 10px; border-radius:7px; border:1px solid rgba(0,136,255,0.4); background:rgba(0,136,255,0.15); color:#22ccff; font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:0.06em; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:700; white-space:nowrap; }
 .slot-save-btn.saved { border-color:rgba(34,170,68,0.4); background:rgba(34,170,68,0.15); color:#33cc66; }
-.slot-btn { width:52px; height:52px; border-radius:10px; border:3px solid; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:900; cursor:pointer; }
+.slot-btn { min-width:0; height:auto; padding:8px 12px; border-radius:8px; border:2px solid; display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:0.06em; font-weight:700; cursor:pointer; white-space:nowrap; }
 .slot-btn-x { border-color:#cc2222; color:#ff4444; background:rgba(204,34,34,0.15); }
-.slot-btn-x.inactive { background:transparent; opacity:0.3; }
-.slot-btn-check { border-color:#22aa44; color:#33cc66; background:transparent; }
-.slot-btn-check.done { background:rgba(34,170,68,0.25); }
+.slot-btn-x.inactive { background:transparent; opacity:0.3; pointer-events:none; }
+.slot-btn-check { border-color:#22aa44; color:#33cc66; background:rgba(34,170,68,0.12); }
+.slot-btn-check.done { background:rgba(34,170,68,0.28); }
 
 .planner-pager { display:flex; align-items:center; gap:8px; }
 .pager-btn { flex:1; padding:12px 8px; border-radius:10px; border:2px solid rgba(0,136,255,0.3); background:rgba(0,136,255,0.1); color:#22ccff; font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:0.1em; cursor:pointer; text-align:center; }
@@ -303,9 +303,10 @@ input.tright.dark-input[type="date"] { font-size:clamp(8px, 3.8cqh, 12px); }
 .po-ig-value { background:rgba(255,255,255,0.08); border-radius:4px; padding:2px 3px; font-family:'Bebas Neue',sans-serif; font-size:10px; color:#22ccff; text-align:center; }
 .po-stat-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px; }
 .po-sg-cell { background:rgba(255,255,255,0.08); border-radius:4px; padding:2px 4px; min-width:0; }
-/* Interest row: APR adjuster bottom-left, amount owed to its right — full width so it never clips off the 16:9 card. */
-.po-sg-cell.po-sg-wide { grid-column:1/-1; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+/* Interest row: APR + interest estimate sit side-by-side (not opposite ends of the card). */
+.po-sg-cell.po-sg-wide { grid-column:1/-1; display:flex; align-items:flex-end; justify-content:flex-start; gap:10px; flex-wrap:wrap; }
 .po-sg-cell.po-sg-wide .po-sg-value { margin-top:0; }
+.po-apr-cluster { display:flex; align-items:flex-end; gap:8px; min-width:0; }
 .po-sg-label { font-size:6px; color:rgba(255,255,255,0.5); letter-spacing:0.04em; text-transform:uppercase; }
 .po-sg-value { font-family:'Bebas Neue',sans-serif; font-size:11px; color:#fff; margin-top:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .po-sg-value.gap { color:#ffdd44; }
@@ -4256,20 +4257,23 @@ function buildPlannerEl(cardId) {
     chargedRow.style.cssText = "display:flex;gap:6px;align-items:center;";
     var saveBtn = document.createElement("button");
     saveBtn.className = "slot-save-btn" + (slot.saved ? " saved" : "");
-    saveBtn.textContent = slot.saved ? "OK" : "SAVE";
-    // Paid row with commit buttons only - no separate paid field
+    saveBtn.textContent = slot.saved ? "Forecasted" : "Forecast Payment";
+    saveBtn.title = slot.saved ? "Projected balance includes this amount" : "Preview this payment against projected balance";
+    // Paid row: Made Payment commits and subtracts from card balance; Undo reverses it
     var paidRow = document.createElement("div");
     paidRow.className = "slot-paid-row";
     var btnWrap = document.createElement("div");
     btnWrap.className = "slot-btn-wrap";
     var xBtn = document.createElement("button");
-    xBtn.className = "slot-btn slot-btn-x"+(slot.committed?" inactive":"");
-    xBtn.innerHTML = "&#10005;";
+    xBtn.className = "slot-btn slot-btn-x"+(slot.committed?"":" inactive");
+    xBtn.textContent = "Undo";
+    xBtn.title = "Undo made payment (adds amount back to balance)";
     var checkBtn = document.createElement("button");
     checkBtn.className = "slot-btn slot-btn-check"+(slot.committed?" done":"");
-    checkBtn.innerHTML = "&#10003;";
-    btnWrap.appendChild(xBtn);
+    checkBtn.textContent = slot.committed ? "Paid" : "Made Payment";
+    checkBtn.title = slot.committed ? "Payment already applied to balance" : "Mark paid — subtracts this amount from card balance";
     btnWrap.appendChild(checkBtn);
+    btnWrap.appendChild(xBtn);
     paidRow.appendChild(btnWrap);
 
     charged.input.style.flex = "1";
@@ -4543,8 +4547,10 @@ function buildCardEl(c, slotNum) {
         '<div class="po-sg-cell"><div class="po-sg-label">GAP</div><div class="po-sg-value" id="pog-'+cid+'">--</div></div>' +
         '<div class="po-sg-cell"><div class="po-sg-label">REMAINING BAL</div><div class="po-sg-value" id="porb-'+cid+'">'+(c.balance?'$'+Math.round(c.balance):'--')+'</div></div>' +
         '<div class="po-sg-cell po-sg-wide">' +
-          '<div style="display:flex;flex-direction:column;gap:1px;flex-shrink:0;"><div class="po-sg-label">APR %</div><div style="display:flex;align-items:center;gap:2px;"><input type="number" id="fld-papr-'+cid+'" value="'+((parseFloat(c.promoApr)>0?c.promoApr:30))+'" min="1" max="99" style="width:34px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.3);border-radius:4px;color:#ffaa33;font-size:11px;text-align:center;outline:none;padding:1px 2px;" oninput="setPromoApr('+cid+',this.value)"><span style="color:#ffaa33;font-size:9px;">%</span></div></div>' +
-          '<div style="display:flex;flex-direction:column;gap:1px;align-items:flex-end;"><div class="po-sg-label">INTEREST IF MISSED</div><div class="po-sg-value orange" id="poit-'+cid+'">'+(c.promoMonths?'$'+Math.round((c.balance||0)*(promoAprOf(c)/12/100)*c.promoMonths)+' est':'--')+'</div></div>' +
+          '<div class="po-apr-cluster">' +
+            '<div style="display:flex;flex-direction:column;gap:1px;flex-shrink:0;"><div class="po-sg-label">APR %</div><div style="display:flex;align-items:center;gap:2px;"><input type="number" id="fld-papr-'+cid+'" value="'+((parseFloat(c.promoApr)>0?c.promoApr:30))+'" min="1" max="99" style="width:34px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.3);border-radius:4px;color:#ffaa33;font-size:11px;text-align:center;outline:none;padding:1px 2px;" oninput="setPromoApr('+cid+',this.value)"><span style="color:#ffaa33;font-size:9px;">%</span></div></div>' +
+            '<div style="display:flex;flex-direction:column;gap:1px;"><div class="po-sg-label">EST. INTEREST IF MISSED</div><div class="po-sg-value orange" id="poit-'+cid+'">'+(c.promoMonths?'$'+Math.round((c.balance||0)*(promoAprOf(c)/12/100)*c.promoMonths)+' est':'--')+'</div></div>' +
+          '</div>' +
         '</div>' +
       '</div>' +
 
