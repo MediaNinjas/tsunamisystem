@@ -54,6 +54,8 @@ html { touch-action:manipulation; scrollbar-gutter:stable; overflow-x:hidden; }
   cursor:pointer; white-space:nowrap; box-shadow:0 2px 8px rgba(0,100,220,0.35);
 }
 .planner-launch-btn:hover { filter:brightness(1.08); }
+.planner-panel { margin:0 0 14px; }
+.planner-panel .card-planner { max-width:520px; }
 
 .card-row { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
 .row-divider { height:3px; background:linear-gradient(90deg,transparent,#1a2535 30%,#0a4080 50%,#1a2535 70%,transparent); border-radius:2px; }
@@ -890,6 +892,7 @@ input[type="date"] { color-scheme: dark; }
 <div id="planner-launch" class="planner-launch" aria-hidden="true">
   <button type="button" id="planner-launch-btn" class="planner-launch-btn">&#128203; PAYMENT PLANNER</button>
 </div>
+<div id="planner-panel" class="planner-panel" style="display:none;" aria-hidden="true"></div>
 
 <div id="grid"></div>
 <div id="ledger-view" style="display:none;">
@@ -4120,29 +4123,44 @@ function calcProjected(cardId) {
   return bal;
 }
 
-// Show planner by replacing card slot content
+// Show planner above the grid — never replace a card slot (that hid neighbor cards).
 function showPlanner(cardId) {
-  var slot = document.getElementById("slot-"+cardId);
-  if (!slot) return;
-  slot.innerHTML = "";
-  var el = buildPlannerEl(cardId);
-  slot.appendChild(el);
+  var panel = document.getElementById("planner-panel");
+  if (!panel) return;
+  panel.innerHTML = "";
+  panel.appendChild(buildPlannerEl(cardId));
+  panel.style.display = "block";
+  panel.setAttribute("aria-hidden", "false");
+  panel.dataset.cardId = String(cardId);
+  try { panel.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch (e) {}
+}
+
+function closePlanner() {
+  var panel = document.getElementById("planner-panel");
+  if (!panel) return;
+  panel.innerHTML = "";
+  panel.style.display = "none";
+  panel.setAttribute("aria-hidden", "true");
+  delete panel.dataset.cardId;
 }
 
 function showCard(cardId) {
+  closePlanner();
   var slot = document.getElementById("slot-"+cardId);
   if (!slot) return;
-  slot.innerHTML = "";
-  var card = cards.find(function(c){return c.id===cardId;});
-  if (!card) return;
-  // Find current position in non-empty cards
-  var active = cards.filter(function(c){return !c.empty;});
-  var pos = active.findIndex(function(c){return c.id===cardId;});
-  var slotNum = pos >= 0 ? pos+1 : card.id;
-  var el = buildCardEl(card, slotNum);
-  slot.appendChild(el);
-  wireCard(card);
-  wireCardInputs(card);
+  // If a previous planner build wiped this slot, restore the card.
+  if (!slot.querySelector(".tsunami-card")) {
+    slot.innerHTML = "";
+    var card = cards.find(function(c){return c.id===cardId;});
+    if (!card) return;
+    var active = cards.filter(function(c){return !c.empty;});
+    var pos = active.findIndex(function(c){return c.id===cardId;});
+    var slotNum = pos >= 0 ? pos+1 : card.id;
+    var el = buildCardEl(card, slotNum);
+    slot.appendChild(el);
+    wireCard(card);
+    wireCardInputs(card);
+  }
 }
 
 function buildPlannerEl(cardId) {
@@ -4995,6 +5013,7 @@ function toggleView() {
     if (btn2) btn2.textContent = "\u25a0 CARDS";
     var pl = document.getElementById('planner-launch');
     if (pl) { pl.classList.remove('show'); pl.setAttribute('aria-hidden', 'true'); }
+    if (typeof closePlanner === 'function') closePlanner();
     renderLedger();
   } else {
     currentView = "cards";
