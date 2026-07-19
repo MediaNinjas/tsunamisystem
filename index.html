@@ -295,7 +295,7 @@ input.tright.dark-input[type="date"] { font-size:clamp(8px, 3.8cqh, 12px); }
 .po-section-label { display:none; }
 .po-stat-value.gap { color:#ffdd44; }
 
-.po-input-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px; margin-bottom:2px; }
+.po-input-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:3px; margin-bottom:2px; }
 .po-ig-cell { display:flex; flex-direction:column; gap:1px; text-align:center; min-width:0; }
 .po-ig-label { font-size:6px; color:rgba(255,255,255,0.5); letter-spacing:0.04em; text-transform:uppercase; }
 .po-ig-input { width:100%; box-sizing:border-box; background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; font-family:'DM Sans',sans-serif; font-size:11px; padding:2px 3px; text-align:center; outline:none; }
@@ -4526,10 +4526,6 @@ function buildCardEl(c, slotNum) {
           '<input class="po-ig-input" id="fld-pmonths-'+cid+'" type="number" inputmode="numeric" value="'+(c.promoMonths||'')+'" placeholder="0" oninput="setPromoMonths('+cid+',this.value)">' +
         '</div>' +
         '<div class="po-ig-cell">' +
-          '<div class="po-ig-label">APR %</div>' +
-          '<input class="po-ig-input" id="fld-papr-'+cid+'" type="number" inputmode="decimal" value="'+(c.promoApr||'')+'" placeholder="0" oninput="setPromoApr('+cid+',this.value)">' +
-        '</div>' +
-        '<div class="po-ig-cell">' +
           '<div class="po-ig-label">WARN MO</div>' +
           '<input class="po-ig-input" id="fld-pwarn-'+cid+'" type="number" inputmode="numeric" value="'+(c.promoWarn||3)+'" placeholder="3" oninput="setPromoWarn('+cid+',this.value)">' +
         '</div>' +
@@ -4543,12 +4539,12 @@ function buildCardEl(c, slotNum) {
 
       '<div class="po-stat-grid">' +
         '<div class="po-sg-cell"><div class="po-sg-label">MO LEFT</div><div class="po-sg-value" id="pom-'+cid+'">--</div></div>' +
-                '<div class="po-sg-cell"><div class="po-sg-label">YOUR/MO</div><div class="po-sg-value" id="pot-'+cid+'">--</div></div>' +
+        '<div class="po-sg-cell"><div class="po-sg-label">YOUR/MO</div><div class="po-sg-value" id="pot-'+cid+'">--</div></div>' +
         '<div class="po-sg-cell"><div class="po-sg-label">GAP</div><div class="po-sg-value" id="pog-'+cid+'">--</div></div>' +
         '<div class="po-sg-cell"><div class="po-sg-label">REMAINING BAL</div><div class="po-sg-value" id="porb-'+cid+'">'+(c.balance?'$'+Math.round(c.balance):'--')+'</div></div>' +
         '<div class="po-sg-cell po-sg-wide">' +
-          '<div style="display:flex;flex-direction:column;gap:1px;flex-shrink:0;"><div class="po-sg-label">APR %</div><div style="display:flex;align-items:center;gap:2px;"><input type="number" id="fld-papr2-'+cid+'" value="'+(c.promoApr||30)+'" min="1" max="99" style="width:34px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.3);border-radius:4px;color:#ffaa33;font-size:11px;text-align:center;outline:none;padding:1px 2px;" oninput="setPromoApr('+cid+',this.value)"><span style="color:#ffaa33;font-size:9px;">%</span></div></div>' +
-          '<div style="display:flex;flex-direction:column;gap:1px;align-items:flex-end;"><div class="po-sg-label">INTEREST IF MISSED</div><div class="po-sg-value orange" id="poit-'+cid+'">'+(c.promoMonths?(function(){var apr=parseFloat(c.promoApr)||30;return '$'+Math.round((c.balance||0)*(apr/12/100)*c.promoMonths)+' est';})():'--')+'</div></div>' +
+          '<div style="display:flex;flex-direction:column;gap:1px;flex-shrink:0;"><div class="po-sg-label">APR %</div><div style="display:flex;align-items:center;gap:2px;"><input type="number" id="fld-papr-'+cid+'" value="'+((parseFloat(c.promoApr)>0?c.promoApr:30))+'" min="1" max="99" style="width:34px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.3);border-radius:4px;color:#ffaa33;font-size:11px;text-align:center;outline:none;padding:1px 2px;" oninput="setPromoApr('+cid+',this.value)"><span style="color:#ffaa33;font-size:9px;">%</span></div></div>' +
+          '<div style="display:flex;flex-direction:column;gap:1px;align-items:flex-end;"><div class="po-sg-label">INTEREST IF MISSED</div><div class="po-sg-value orange" id="poit-'+cid+'">'+(c.promoMonths?'$'+Math.round((c.balance||0)*(promoAprOf(c)/12/100)*c.promoMonths)+' est':'--')+'</div></div>' +
         '</div>' +
       '</div>' +
 
@@ -4601,6 +4597,7 @@ function wireCardInputs(c) {
       if (tmEl) tmEl.textContent = fmt(tm);
       updateTotals();
       saveCards();
+      if (c.promoOn) checkPromoWarning(cid);
     });
   }
   bind("fld-name-"+cid, "name", false);
@@ -4633,29 +4630,11 @@ function wireCardInputs(c) {
     credEl.addEventListener("blur", function(){ this.type="password"; });
   }
 
-  // Wire promo overlay inputs
-  var pmonths = document.getElementById("fld-pmonths-"+cid);
-  if (pmonths) {
-    pmonths.addEventListener("change", function(){ setPromoMonths(cid, this.value); });
-  }
-  var papr = document.getElementById("fld-papr-"+cid);
-  if (papr) papr.addEventListener("change", function(){ setPromoApr(cid, this.value); });
-  var pclose = document.getElementById("poclose-"+cid);
-  if (pclose) pclose.addEventListener("click", function(){ dismissPromo(cid); });
-  var poat = document.getElementById("poat-"+cid);
-  if (poat) {
-    poat.onclick = function(){ toggleAbout(cid); };
-  }
+  // Wire promo overlay inputs (single APR field on the interest row)
   var pmonths = document.getElementById("fld-pmonths-"+cid);
   if (pmonths) pmonths.addEventListener("change", function(){ setPromoMonths(cid, this.value); });
   var papr = document.getElementById("fld-papr-"+cid);
   if (papr) papr.addEventListener("change", function(){ setPromoApr(cid, this.value); });
-  var pclose = document.getElementById("poclose-"+cid);
-  if (pclose) pclose.addEventListener("click", function(){ dismissPromo(cid); });
-  var poat = document.getElementById("poat-"+cid);
-  if (poat) {
-    poat.onclick = function(){ toggleAbout(cid); };
-  }
 
   // Check warning state after wiring
   if (c.promoOn) setTimeout(function(){ checkPromoWarning(cid); }, 50);
@@ -4794,6 +4773,11 @@ function updateTotals() {
 
 
 // ============= PROMO CLIFF WARNING SYSTEM =============
+function promoAprOf(c) {
+  var a = parseFloat(c && c.promoApr);
+  return (a > 0) ? a : 30;
+}
+
 function calcPromoEnd(months) {
   if (!months || months <= 0) return "";
   var d = new Date();
@@ -4816,7 +4800,7 @@ function fmtMonthYear(str) {
   if (!str) return "";
   var p = str.split("-");
   if (p.length < 2) return str;
-  var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
   return months[parseInt(p[1])-1] + " " + p[0];
 }
 
@@ -4824,17 +4808,10 @@ function togglePromo(cardId) {
   var c = cards.find(function(x){return x.id==cardId;});
   if (!c) return;
   c.promoOn = !c.promoOn;
+  if (c.promoOn && !(parseFloat(c.promoApr) > 0)) c.promoApr = 30;
   saveCards();
   showCard(cardId);
-  if (c.promoOn) {
-    checkPromoWarning(cardId);
-    setTimeout(function(){
-      var poat = document.getElementById("poat-"+cardId);
-      if (poat) poat.onclick = function(){ toggleAbout(cardId); };
-      var pclose = document.getElementById("poclose-"+cardId);
-      if (pclose) pclose.onclick = function(){ dismissPromo(cardId); };
-    }, 50);
-  }
+  if (c.promoOn) checkPromoWarning(cardId);
 }
 
 function setPromoMonths(cardId, val) {
@@ -4844,16 +4821,7 @@ function setPromoMonths(cardId, val) {
   c.promoEnd = calcPromoEnd(c.promoMonths);
   c.dismissed = false;
   var endEl = document.getElementById("pend-"+cardId);
-  if (endEl) endEl.textContent = fmtMonthYear(c.promoEnd);
-  var promoEndRow = document.getElementById("promo-end-"+cardId);
-  if (promoEndRow) promoEndRow.textContent = fmtMonthYear(c.promoEnd);
-  // Update interest-owed-if-missed amount only - don't touch remaining balance
-  var itEl = document.getElementById("poit-"+cardId);
-  if (itEl) {
-    var apr = parseFloat(c.promoApr)||30;
-    var intEst = (c.balance||0) * (apr/12/100) * c.promoMonths;
-    itEl.textContent = "$"+Math.round(intEst)+" est";
-  }
+  if (endEl) endEl.textContent = fmtMonthYear(c.promoEnd) || "--";
   saveCards();
   checkPromoWarning(cardId);
 }
@@ -4861,18 +4829,10 @@ function setPromoMonths(cardId, val) {
 function setPromoApr(cardId, val) {
   var c = cards.find(function(x){return x.id==cardId;});
   if (!c) return;
-  c.promoApr = parseFloat(val)||0;
-  // Update interest-owed-if-missed amount
-  var itEl = document.getElementById("poit-"+cardId);
-  if (itEl) {
-    var intEst = (c.balance||0) * (c.promoApr/12/100) * (c.promoMonths||0);
-    itEl.textContent = "$"+Math.round(intEst)+" est";
-  }
-  // Keep the APR % input (top grid) and the bottom interest-row adjuster in sync
-  ["fld-papr-"+cardId, "fld-papr2-"+cardId].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el && el !== document.activeElement && el.value !== String(val)) el.value = val;
-  });
+  var n = parseFloat(val);
+  c.promoApr = (n > 0) ? n : 30;
+  var el = document.getElementById("fld-papr-"+cardId);
+  if (el && el !== document.activeElement) el.value = c.promoApr;
   saveCards();
   checkPromoWarning(cardId);
 }
@@ -4881,6 +4841,7 @@ function setPromoWarn(cardId, val) {
   var c = cards.find(function(x){return x.id==cardId;});
   if (!c) return;
   c.promoWarn = parseInt(val)||3;
+  saveCards();
   checkPromoWarning(cardId);
 }
 
@@ -4892,33 +4853,33 @@ function checkPromoWarning(cardId) {
   if (!card || !ov) return;
 
   // Control overlay visibility
-  if (!c.promoOn) ov.classList.remove("show");
+  if (c.promoOn) ov.classList.add("show");
+  else ov.classList.remove("show");
 
   // If promo is fully disabled (no months entered), remove warnings and bail
   if (!c.promoMonths) {
     card.classList.remove("promo-alert");
     var wov2 = document.getElementById("pwov-"+cardId);
     if (wov2) wov2.classList.remove("active");
+    var itEmpty = document.getElementById("poit-"+cardId);
+    if (itEmpty) itEmpty.textContent = "--";
+    var rbEmpty = document.getElementById("porb-"+cardId);
+    if (rbEmpty) rbEmpty.textContent = c.balance ? "$"+Math.round(c.balance) : "--";
     return;
   }
-  // Always calculate remaining balance and interest even without promoEnd
-  var _balance = parseFloat(c.balance)||0;
-  var _totalMonthly = (parseFloat(c.minPayment)||0)+(parseFloat(c.interest)||0)+(parseFloat(c.tsunami)||0);
-  // Use promoEnd if set, otherwise fall back to promoMonths
+
   var m;
   if (c.promoEnd) {
     m = monthsLeft(c.promoEnd);
     if (m === null) m = c.promoMonths || 0;
-  } else if (c.promoMonths) {
-    m = parseInt(c.promoMonths);
   } else {
-    card.classList.remove("promo-alert");
-    return;
+    m = parseInt(c.promoMonths) || 0;
   }
 
   var balance = parseFloat(c.balance)||0;
   var totalMonthly = (parseFloat(c.minPayment)||0) + (parseFloat(c.interest)||0) + (parseFloat(c.tsunami)||0);
-  var promoAprRate = (parseFloat(c.promoApr)||0) / 12 / 100;
+  var apr = promoAprOf(c);
+  var promoAprRate = apr / 12 / 100;
   var required;
   if (c.promoMonths > 0) {
     if (promoAprRate > 0) {
@@ -4939,32 +4900,35 @@ function checkPromoWarning(cardId) {
     if (wov) wov.classList.add("active");
   } else {
     card.classList.remove("promo-alert");
-    var wov = document.getElementById("pwov-"+cardId);
-    if (wov) wov.classList.remove("active");
+    var wovOff = document.getElementById("pwov-"+cardId);
+    if (wovOff) wovOff.classList.remove("active");
   }
 
-  // Show math section whenever months are set
-  var mathEl = document.getElementById("pomath-"+cardId);
-  if (mathEl && c.promoMonths > 0) mathEl.style.display = "flex";
-
-  // Always populate all math fields
   var mel = document.getElementById("pom-"+cardId);
   var tel = document.getElementById("pot-"+cardId);
   var gel = document.getElementById("pog-"+cardId);
-  if (mel) mel.textContent = m <= 0 ? "EXPIRED" : c.promoMonths + " mo";
+  var rbel = document.getElementById("porb-"+cardId);
+  var itEl = document.getElementById("poit-"+cardId);
+  if (mel) mel.textContent = m <= 0 ? "EXPIRED" : m + " mo";
   if (tel) tel.textContent = "$"+Math.round(totalMonthly)+"/mo";
   if (gel) {
     var gap = required - totalMonthly;
     gel.textContent = gap > 0 ? "+$"+Math.ceil(gap)+" SHORT" : "ON TRACK";
     gel.className = "po-sg-value"+(gap > 0 ? " gap" : "");
   }
+  if (rbel) rbel.textContent = balance ? "$"+Math.round(balance) : "--";
+  if (itEl) {
+    var intEst = balance * (apr/12/100) * (c.promoMonths||0);
+    itEl.textContent = "$"+Math.round(intEst)+" est";
+  }
+  var paprEl = document.getElementById("fld-papr-"+cardId);
+  if (paprEl && paprEl !== document.activeElement) paprEl.value = apr;
 }
 
 function dismissPromo(cardId) {
   var c = cards.find(function(x){return x.id==cardId;});
-  if (c) { c.promoOn = false; }
+  if (c) { c.promoOn = false; saveCards(); }
   showCard(cardId);
-  // Apply warning border after DOM updates
   setTimeout(function(){ checkPromoWarning(cardId); }, 50);
 }
 
