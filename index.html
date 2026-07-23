@@ -55,7 +55,7 @@ html { touch-action:manipulation; scrollbar-gutter:stable; overflow-x:hidden; }
 }
 .planner-launch-btn:hover { filter:brightness(1.08); }
 .planner-panel { margin:0 0 14px; }
-.planner-panel .card-planner { max-width:640px; }
+.planner-panel .card-planner { max-width:none; width:100%; }
 
 .card-row { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
 .row-divider { height:3px; background:linear-gradient(90deg,transparent,#1a2535 30%,#0a4080 50%,#1a2535 70%,transparent); border-radius:2px; }
@@ -224,7 +224,7 @@ input.tright.dark-input[type="date"] { font-size:clamp(8px, 3.8cqh, 12px); }
 }
 
 /* CARD BACK - PLANNER (dense ledger rows) */
-.card-planner { width:100%; max-width:640px; border-radius:14px; background:linear-gradient(145deg,#0a1628 0%,#0d2040 40%,#08101e 100%); border:1px solid rgba(0,136,255,0.25); box-shadow:0 8px 28px rgba(0,0,0,0.45); padding:10px 12px; display:flex; flex-direction:column; gap:8px; }
+.card-planner { width:100%; max-width:none; border-radius:14px; background:linear-gradient(145deg,#0a1628 0%,#0d2040 40%,#08101e 100%); border:1px solid rgba(0,136,255,0.25); box-shadow:0 8px 28px rgba(0,0,0,0.45); padding:10px 12px; display:flex; flex-direction:column; gap:8px; box-sizing:border-box; }
 
 .planner-header { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .planner-card-name { font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:0.1em; color:#22ccff; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -235,7 +235,11 @@ input.tright.dark-input[type="date"] { font-size:clamp(8px, 3.8cqh, 12px); }
 .pp-label { font-size:8px; color:rgba(255,255,255,0.45); letter-spacing:0.12em; text-transform:uppercase; }
 .pp-value { font-family:'Bebas Neue',sans-serif; font-size:16px; color:#22ccff; }
 
-.planner-slots { display:flex; flex-direction:column; gap:4px; }
+.planner-cols { display:grid; grid-template-columns:1fr; gap:10px; }
+@media (min-width:600px) {
+  .planner-cols { grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+}
+.planner-slots { display:flex; flex-direction:column; gap:4px; min-width:0; }
 .payment-slot { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:6px 8px; display:flex; flex-direction:column; gap:4px; }
 .payment-slot.is-committed { border-color:rgba(34,170,68,0.35); background:rgba(34,170,68,0.06); }
 .slot-row { display:grid; grid-template-columns:28px minmax(72px,1fr) 64px minmax(0,1.1fr) auto; gap:6px; align-items:center; }
@@ -4134,8 +4138,15 @@ var cards = loadCards();
 var plannerState = {};
 
 function getPS(id) {
-  if (!plannerState[id]) plannerState[id] = {pages:[[{},{},{},{}]],page:0};
-  return plannerState[id];
+  if (!plannerState[id]) plannerState[id] = {pages:[[{},{},{},{}],[{},{},{},{}]],page:0};
+  var ps = plannerState[id];
+  if (!ps.pages || !ps.pages.length) ps.pages = [[{},{},{},{}],[{},{},{},{}]];
+  // Always keep pairs so the 2-col view has a right bank of 4
+  while (ps.pages.length < 2) ps.pages.push([{},{},{},{}]);
+  if (ps.page == null || ps.page < 0) ps.page = 0;
+  if (ps.page % 2 === 1) ps.page = Math.max(0, ps.page - 1);
+  if (ps.page >= ps.pages.length) ps.page = Math.max(0, ps.pages.length - (ps.pages.length % 2 === 0 ? 2 : 1));
+  return ps;
 }
 
 function fmt(n) {
@@ -4180,8 +4191,14 @@ function restoreCommittedPlannerSlots(slots, card) {
 function clearPlannerPage(cardId) {
   var card = cards.find(function(c){ return c.id === cardId; });
   var ps = getPS(cardId);
-  restoreCommittedPlannerSlots(ps.pages[ps.page], card);
-  ps.pages[ps.page] = [{}, {}, {}, {}];
+  var left = ps.page;
+  var right = left + 1;
+  restoreCommittedPlannerSlots(ps.pages[left], card);
+  ps.pages[left] = [{}, {}, {}, {}];
+  if (ps.pages[right]) {
+    restoreCommittedPlannerSlots(ps.pages[right], card);
+    ps.pages[right] = [{}, {}, {}, {}];
+  }
   if (card) { saveCards(); updateTotals(); }
   showPlanner(cardId);
 }
@@ -4190,7 +4207,7 @@ function clearPlannerAll(cardId) {
   var card = cards.find(function(c){ return c.id === cardId; });
   var ps = getPS(cardId);
   ps.pages.forEach(function(page){ restoreCommittedPlannerSlots(page, card); });
-  plannerState[cardId] = { pages: [[{}, {}, {}, {}]], page: 0 };
+  plannerState[cardId] = { pages: [[{}, {}, {}, {}], [{}, {}, {}, {}]], page: 0 };
   if (card) { saveCards(); updateTotals(); }
   showPlanner(cardId);
 }
@@ -4237,11 +4254,14 @@ function buildPlannerEl(cardId) {
   var card = cards.find(function(c){return c.id===cardId;});
   if (!card) return document.createElement("div");
   var ps = getPS(cardId);
-  var pg = ps.page;
-  var slots = ps.pages[pg];
+  // Snap to even page so each view is a left+right pair of 4
+  if (ps.page % 2 === 1) ps.page = Math.max(0, ps.page - 1);
+  while (ps.pages.length < ps.page + 2) ps.pages.push([{},{},{},{}]);
+  var pgLeft = ps.page;
+  var pgRight = ps.page + 1;
   var projected = calcProjected(cardId);
-  var slotOffset = 0;
-  for (var _p = 0; _p < pg; _p++) slotOffset += (ps.pages[_p] || []).length;
+  var viewCount = Math.ceil(ps.pages.length / 2);
+  var viewIndex = Math.floor(ps.page / 2);
 
   var wrap = document.createElement("div");
   wrap.className = "card-planner";
@@ -4263,214 +4283,230 @@ function buildPlannerEl(cardId) {
     });
   }, 10);
 
-  var list = document.createElement("div");
-  list.className = "planner-slots";
+  function slotOffsetForPage(pageIdx) {
+    var off = 0;
+    for (var _p = 0; _p < pageIdx; _p++) off += (ps.pages[_p] || []).length;
+    return off;
+  }
 
-  slots.forEach(function(slot, i) {
-    var globalNum = slotOffset + i + 1;
-    var slotEl = document.createElement("div");
-    slotEl.className = "payment-slot"+(slot.committed ? " is-committed" : "");
+  function buildSlotColumn(pageIdx) {
+    var list = document.createElement("div");
+    list.className = "planner-slots";
+    var slots = ps.pages[pageIdx] || (ps.pages[pageIdx] = [{},{},{},{}]);
+    var slotOffset = slotOffsetForPage(pageIdx);
 
-    var row = document.createElement("div");
-    row.className = "slot-row";
+    slots.forEach(function(slot, i) {
+      var globalNum = slotOffset + i + 1;
+      var slotEl = document.createElement("div");
+      slotEl.className = "payment-slot"+(slot.committed ? " is-committed" : "");
 
-    var num = document.createElement("div");
-    num.className = "slot-num";
-    num.textContent = String(globalNum);
-    row.appendChild(num);
+      var row = document.createElement("div");
+      row.className = "slot-row";
 
-    var amt = document.createElement("input");
-    amt.className = "slot-input orange";
-    amt.type = "number";
-    amt.inputMode = "decimal";
-    amt.placeholder = "$0.00";
-    amt.value = slot.charged || "";
-    amt.title = "Payment amount";
-    if (slot.committed) amt.disabled = true;
-    row.appendChild(amt);
+      var num = document.createElement("div");
+      num.className = "slot-num";
+      num.textContent = String(globalNum);
+      row.appendChild(num);
 
-    var date = document.createElement("input");
-    date.className = "slot-input";
-    date.type = "text";
-    date.placeholder = "mm/dd";
-    date.value = slot.date || "";
-    date.title = "Payment date";
-    if (slot.committed) date.disabled = true;
-    row.appendChild(date);
+      var amt = document.createElement("input");
+      amt.className = "slot-input orange";
+      amt.type = "number";
+      amt.inputMode = "decimal";
+      amt.placeholder = "$0.00";
+      amt.value = slot.charged || "";
+      amt.title = "Payment amount";
+      if (slot.committed) amt.disabled = true;
+      row.appendChild(amt);
 
-    var ref = document.createElement("input");
-    ref.className = "slot-input slot-ref";
-    ref.type = "text";
-    ref.placeholder = "Ref / check #";
-    ref.value = slot.ref || "";
-    ref.title = "Optional reference";
-    if (slot.committed) ref.disabled = true;
-    row.appendChild(ref);
+      var date = document.createElement("input");
+      date.className = "slot-input";
+      date.type = "text";
+      date.placeholder = "mm/dd";
+      date.value = slot.date || "";
+      date.title = "Payment date";
+      if (slot.committed) date.disabled = true;
+      row.appendChild(date);
 
-    var actions = document.createElement("div");
-    actions.className = "slot-actions";
+      var ref = document.createElement("input");
+      ref.className = "slot-input slot-ref";
+      ref.type = "text";
+      ref.placeholder = "Ref / check #";
+      ref.value = slot.ref || "";
+      ref.title = "Optional reference";
+      if (slot.committed) ref.disabled = true;
+      row.appendChild(ref);
 
-    var saveBtn = document.createElement("button");
-    saveBtn.type = "button";
-    saveBtn.className = "slot-save-btn" + (slot.saved ? " saved" : "");
-    saveBtn.textContent = "Forecast";
-    saveBtn.title = slot.saved ? "Projected balance includes this amount" : "Preview this payment against projected balance";
-    actions.appendChild(saveBtn);
+      var actions = document.createElement("div");
+      actions.className = "slot-actions";
 
-    var checkBtn = document.createElement("button");
-    checkBtn.type = "button";
-    checkBtn.className = "slot-btn slot-btn-check"+(slot.committed?" done":"");
-    checkBtn.textContent = "Paid";
-    checkBtn.title = slot.committed ? "Payment already applied to balance" : "Mark paid — subtracts this amount from card balance";
-    actions.appendChild(checkBtn);
+      var saveBtn = document.createElement("button");
+      saveBtn.type = "button";
+      saveBtn.className = "slot-save-btn" + (slot.saved ? " saved" : "");
+      saveBtn.textContent = "Forecast";
+      saveBtn.title = slot.saved ? "Projected balance includes this amount" : "Preview this payment against projected balance";
+      actions.appendChild(saveBtn);
 
-    var xBtn = document.createElement("button");
-    xBtn.type = "button";
-    xBtn.className = "slot-btn slot-btn-x"+(slot.committed?"":" inactive");
-    xBtn.textContent = "Undo";
-    xBtn.title = "Undo made payment (adds amount back to balance)";
-    actions.appendChild(xBtn);
+      var checkBtn = document.createElement("button");
+      checkBtn.type = "button";
+      checkBtn.className = "slot-btn slot-btn-check"+(slot.committed?" done":"");
+      checkBtn.textContent = "Paid";
+      checkBtn.title = slot.committed ? "Payment already applied to balance" : "Mark paid — subtracts this amount from card balance";
+      actions.appendChild(checkBtn);
 
-    if (pg > 0) {
-      var delSlotBtn = document.createElement("button");
-      delSlotBtn.type = "button";
-      delSlotBtn.className = "slot-del";
-      delSlotBtn.textContent = "X";
-      delSlotBtn.title = "Remove this slot";
-      delSlotBtn.addEventListener("click",(function(pp,si){return function(){
-        var slotConfirm = document.createElement("div");
-        slotConfirm.className = "slot-confirm";
-        slotConfirm.innerHTML = '<span>Delete this slot?</span>' +
-          '<button type="button" style="background:#cc1111;color:#fff;" onclick="(function(){plannerState['+cardId+'].pages['+pp+'].splice('+si+',1);if(plannerState['+cardId+'].pages['+pp+'].length===0){plannerState['+cardId+'].pages.splice('+pp+',1);if(plannerState['+cardId+'].page>=plannerState['+cardId+'].pages.length)plannerState['+cardId+'].page=plannerState['+cardId+'].pages.length-1;}showPlanner('+cardId+');})()">YES</button>' +
-          '<button type="button" style="background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);" onclick="this.parentNode.remove()">NO</button>';
-        this.closest(".payment-slot").appendChild(slotConfirm);
-        this.style.display = "none";
-      };})(pg,i));
-      actions.appendChild(delSlotBtn);
-    }
+      var xBtn = document.createElement("button");
+      xBtn.type = "button";
+      xBtn.className = "slot-btn slot-btn-x"+(slot.committed?"":" inactive");
+      xBtn.textContent = "Undo";
+      xBtn.title = "Undo made payment (adds amount back to balance)";
+      actions.appendChild(xBtn);
 
-    row.appendChild(actions);
-    slotEl.appendChild(row);
+      if (pageIdx > 0) {
+        var delSlotBtn = document.createElement("button");
+        delSlotBtn.type = "button";
+        delSlotBtn.className = "slot-del";
+        delSlotBtn.textContent = "X";
+        delSlotBtn.title = "Remove this slot";
+        delSlotBtn.addEventListener("click",(function(pp,si){return function(){
+          var slotConfirm = document.createElement("div");
+          slotConfirm.className = "slot-confirm";
+          slotConfirm.innerHTML = '<span>Delete this slot?</span>' +
+            '<button type="button" style="background:#cc1111;color:#fff;" onclick="(function(){plannerState['+cardId+'].pages['+pp+'].splice('+si+',1);if(plannerState['+cardId+'].pages['+pp+'].length===0){plannerState['+cardId+'].pages.splice('+pp+',1);if(plannerState['+cardId+'].page>=plannerState['+cardId+'].pages.length)plannerState['+cardId+'].page=Math.max(0,plannerState['+cardId+'].pages.length-2);if(plannerState['+cardId+'].page%2===1)plannerState['+cardId+'].page--;}showPlanner('+cardId+');})()">YES</button>' +
+            '<button type="button" style="background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);" onclick="this.parentNode.remove()">NO</button>';
+          this.closest(".payment-slot").appendChild(slotConfirm);
+          this.style.display = "none";
+        };})(pageIdx,i));
+        actions.appendChild(delSlotBtn);
+      }
 
-    if (slot.committed) {
-      var tag = document.createElement("div");
-      tag.className = "slot-committed-tag";
-      tag.textContent = "PAID — subtracted from balance";
-      slotEl.appendChild(tag);
-    }
+      row.appendChild(actions);
+      slotEl.appendChild(row);
 
-    var step1El = document.createElement("div");
-    step1El.className = "slot-confirm";
-    step1El.style.display = "none";
-    step1El.innerHTML = '<span>Undo this payment?</span>';
-    var step1Yes = document.createElement("button");
-    step1Yes.type = "button";
-    step1Yes.textContent = "YES";
-    step1Yes.style.cssText = "background:#cc1111;color:#fff;";
-    var step1No = document.createElement("button");
-    step1No.type = "button";
-    step1No.textContent = "NO";
-    step1No.style.cssText = "background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);";
-    step1El.appendChild(step1Yes);
-    step1El.appendChild(step1No);
-    slotEl.appendChild(step1El);
+      if (slot.committed) {
+        var tag = document.createElement("div");
+        tag.className = "slot-committed-tag";
+        tag.textContent = "PAID — subtracted from balance";
+        slotEl.appendChild(tag);
+      }
 
-    var step2El = document.createElement("div");
-    step2El.className = "slot-confirm";
-    step2El.style.display = "none";
-    step2El.innerHTML = '<span>Are you sure that you\'re sure lol?</span>';
-    var step2Yes = document.createElement("button");
-    step2Yes.type = "button";
-    step2Yes.textContent = "YES";
-    step2Yes.style.cssText = "background:#cc1111;color:#fff;";
-    var step2No = document.createElement("button");
-    step2No.type = "button";
-    step2No.textContent = "NO";
-    step2No.style.cssText = "background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);";
-    step2El.appendChild(step2Yes);
-    step2El.appendChild(step2No);
-    slotEl.appendChild(step2El);
+      var step1El = document.createElement("div");
+      step1El.className = "slot-confirm";
+      step1El.style.display = "none";
+      step1El.innerHTML = '<span>Undo this payment?</span>';
+      var step1Yes = document.createElement("button");
+      step1Yes.type = "button";
+      step1Yes.textContent = "YES";
+      step1Yes.style.cssText = "background:#cc1111;color:#fff;";
+      var step1No = document.createElement("button");
+      step1No.type = "button";
+      step1No.textContent = "NO";
+      step1No.style.cssText = "background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);";
+      step1El.appendChild(step1Yes);
+      step1El.appendChild(step1No);
+      slotEl.appendChild(step1El);
 
-    step1Yes.addEventListener("click", (function(s1,s2){return function(){
-      s1.style.display = "none";
-      s2.style.display = "flex";
-    };})(step1El,step2El));
-    step1No.addEventListener("click", (function(s1){return function(){
-      s1.style.display = "none";
-    };})(step1El));
-    step2Yes.addEventListener("click", (function(pp,ii){return function(){
-      var payment=parseFloat(ps.pages[pp][ii].charged)||0;
-      ps.pages[pp][ii].committed = false;
-      ps.pages[pp][ii].charged = "";
-      ps.pages[pp][ii].saved = false;
-      card.balance=card.balance+payment;
-      var balEl=document.getElementById("pbal-"+cardId);
-      if(balEl) balEl.textContent=fmt(card.balance);
-      saveCards();
-      updateTotals();
-      showPlanner(cardId);
-    };})(pg,i));
-    step2No.addEventListener("click", (function(s2){return function(){
-      s2.style.display = "none";
-    };})(step2El));
+      var step2El = document.createElement("div");
+      step2El.className = "slot-confirm";
+      step2El.style.display = "none";
+      step2El.innerHTML = '<span>Are you sure that you\'re sure lol?</span>';
+      var step2Yes = document.createElement("button");
+      step2Yes.type = "button";
+      step2Yes.textContent = "YES";
+      step2Yes.style.cssText = "background:#cc1111;color:#fff;";
+      var step2No = document.createElement("button");
+      step2No.type = "button";
+      step2No.textContent = "NO";
+      step2No.style.cssText = "background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);";
+      step2El.appendChild(step2Yes);
+      step2El.appendChild(step2No);
+      slotEl.appendChild(step2El);
 
-    list.appendChild(slotEl);
-
-    ref.addEventListener("change",(function(pp,ii){return function(){ps.pages[pp][ii].ref=this.value;};})(pg,i));
-    date.addEventListener("change",(function(pp,ii){return function(){ps.pages[pp][ii].date=this.value;};})(pg,i));
-    amt.addEventListener("change",(function(pp,ii){return function(){
-      ps.pages[pp][ii].charged=this.value;
-      var el=document.getElementById("pproj-"+cardId);
-      if(el) el.textContent=fmt(calcProjected(cardId));
-    };})(pg,i));
-    (function(pp,ii,inp){
-      saveBtn.addEventListener("click",function(){
-        ps.pages[pp][ii].charged=inp.value;
-        ps.pages[pp][ii].saved=true;
-        var el=document.getElementById("pproj-"+cardId);
-        if(el) el.textContent=fmt(calcProjected(cardId));
-        showPlanner(cardId);
-      });
-    })(pg,i,amt);
-
-    (function(pp,ii){
-      checkBtn.addEventListener("click",function(){
-        if (ps.pages[pp][ii].committed) return;
+      step1Yes.addEventListener("click", (function(s1,s2){return function(){
+        s1.style.display = "none";
+        s2.style.display = "flex";
+      };})(step1El,step2El));
+      step1No.addEventListener("click", (function(s1){return function(){
+        s1.style.display = "none";
+      };})(step1El));
+      step2Yes.addEventListener("click", (function(pp,ii){return function(){
         var payment=parseFloat(ps.pages[pp][ii].charged)||0;
-        if (payment===0) return;
-        ps.pages[pp][ii].committed=true;
-        ps.pages[pp][ii].locked=true;
-        ps.pages[pp][ii].saved=true;
-        card.balance=Math.round((card.balance-payment)*100)/100;
+        ps.pages[pp][ii].committed = false;
+        ps.pages[pp][ii].charged = "";
+        ps.pages[pp][ii].saved = false;
+        card.balance=card.balance+payment;
         var balEl=document.getElementById("pbal-"+cardId);
         if(balEl) balEl.textContent=fmt(card.balance);
         saveCards();
         updateTotals();
         showPlanner(cardId);
-      });
-    })(pg,i);
-    xBtn.addEventListener("click",(function(s1){return function(){
-      if (!ps.pages[pg][i].committed) return;
-      s1.style.display = "flex";
-    };})(step1El));
-  });
+      };})(pageIdx,i));
+      step2No.addEventListener("click", (function(s2){return function(){
+        s2.style.display = "none";
+      };})(step2El));
 
-  wrap.appendChild(list);
+      list.appendChild(slotEl);
+
+      ref.addEventListener("change",(function(pp,ii){return function(){ps.pages[pp][ii].ref=this.value;};})(pageIdx,i));
+      date.addEventListener("change",(function(pp,ii){return function(){ps.pages[pp][ii].date=this.value;};})(pageIdx,i));
+      amt.addEventListener("change",(function(pp,ii){return function(){
+        ps.pages[pp][ii].charged=this.value;
+        var el=document.getElementById("pproj-"+cardId);
+        if(el) el.textContent=fmt(calcProjected(cardId));
+      };})(pageIdx,i));
+      (function(pp,ii,inp){
+        saveBtn.addEventListener("click",function(){
+          ps.pages[pp][ii].charged=inp.value;
+          ps.pages[pp][ii].saved=true;
+          var el=document.getElementById("pproj-"+cardId);
+          if(el) el.textContent=fmt(calcProjected(cardId));
+          showPlanner(cardId);
+        });
+      })(pageIdx,i,amt);
+
+      (function(pp,ii){
+        checkBtn.addEventListener("click",function(){
+          if (ps.pages[pp][ii].committed) return;
+          var payment=parseFloat(ps.pages[pp][ii].charged)||0;
+          if (payment===0) return;
+          ps.pages[pp][ii].committed=true;
+          ps.pages[pp][ii].locked=true;
+          ps.pages[pp][ii].saved=true;
+          card.balance=Math.round((card.balance-payment)*100)/100;
+          var balEl=document.getElementById("pbal-"+cardId);
+          if(balEl) balEl.textContent=fmt(card.balance);
+          saveCards();
+          updateTotals();
+          showPlanner(cardId);
+        });
+      })(pageIdx,i);
+      xBtn.addEventListener("click",(function(s1,pp,ii){return function(){
+        if (!ps.pages[pp][ii].committed) return;
+        s1.style.display = "flex";
+      };})(step1El,pageIdx,i));
+    });
+
+    return list;
+  }
+
+  var cols = document.createElement("div");
+  cols.className = "planner-cols";
+  cols.appendChild(buildSlotColumn(pgLeft));
+  cols.appendChild(buildSlotColumn(pgRight));
+  wrap.appendChild(cols);
 
   var pager = document.createElement("div");
   pager.className = "planner-pager";
 
   var prevBtn = document.createElement("button");
   prevBtn.type = "button";
-  prevBtn.className = "pager-btn"+(pg===0?" off":"");
+  prevBtn.className = "pager-btn"+(viewIndex===0?" off":"");
   prevBtn.innerHTML = "&#9664; PREV";
   prevBtn.addEventListener("click", function(){
-    if (ps.page>0){ps.page--;showPlanner(cardId);}
+    if (ps.page >= 2) { ps.page -= 2; showPlanner(cardId); }
   });
 
   var counter = document.createElement("div");
   counter.className = "pager-count";
-  counter.textContent = (pg+1)+"/"+ps.pages.length;
+  counter.textContent = (viewIndex+1)+"/"+viewCount;
 
   var nextWrap = document.createElement("div");
   nextWrap.style.cssText = "flex:1;display:flex;flex-direction:column;gap:4px;";
@@ -4480,7 +4516,7 @@ function buildPlannerEl(cardId) {
   nextBtn.className = "pager-btn";
   nextBtn.innerHTML = "NEXT &#9654;";
   nextBtn.addEventListener("click", function(){
-    if (ps.page < ps.pages.length-1) { ps.page++; showPlanner(cardId); }
+    if (ps.page + 2 < ps.pages.length) { ps.page += 2; showPlanner(cardId); }
     else {
       var box = document.getElementById("ambox-"+cardId);
       if (box) box.classList.toggle("show");
@@ -4494,7 +4530,7 @@ function buildPlannerEl(cardId) {
   amBox.innerHTML = '<div class="am-title">NEED MORE SLOTS?</div>' +
     '<div class="am-sub">How many payments do you want to add?</div>' +
     '<div class="am-row">' +
-    '<input class="am-input" type="number" id="amcount-'+cardId+'" value="4" min="1" max="20">' +
+    '<input class="am-input" type="number" id="amcount-'+cardId+'" value="8" min="1" max="40">' +
     '<button class="am-add" type="button" id="amadd-'+cardId+'">ADD</button>' +
     '<button class="am-cancel" type="button" id="amcancel-'+cardId+'">CANCEL</button>' +
     '</div>';
@@ -4512,7 +4548,7 @@ function buildPlannerEl(cardId) {
   clearPageBtn.type = "button";
   clearPageBtn.className = "planner-clear-btn";
   clearPageBtn.textContent = "CLEAR PAGE";
-  clearPageBtn.title = "Clear slots on this page";
+  clearPageBtn.title = "Clear both columns on this view";
 
   var clearAllBtn = document.createElement("button");
   clearAllBtn.type = "button";
@@ -4573,10 +4609,12 @@ function buildPlannerEl(cardId) {
     var addBtn = document.getElementById("amadd-"+cardId);
     var cancelBtn = document.getElementById("amcancel-"+cardId);
     if (addBtn) addBtn.addEventListener("click", function(){
-      var n = parseInt(document.getElementById("amcount-"+cardId).value)||4;
+      var n = parseInt(document.getElementById("amcount-"+cardId).value)||8;
       var fullPages = Math.ceil(n/4);
+      if (fullPages % 2 === 1) fullPages += 1; // keep pairs for 2-col layout
       for (var p=0;p<fullPages;p++) ps.pages.push([{},{},{},{}]);
       ps.page = ps.pages.length - fullPages;
+      if (ps.page % 2 === 1) ps.page--;
       showPlanner(cardId);
     });
     if (cancelBtn) cancelBtn.addEventListener("click", function(){
