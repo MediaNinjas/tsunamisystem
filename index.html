@@ -5201,6 +5201,8 @@ function toggleAutoTsunami() {
     else if (typeof updatePlannerLaunch === "function") updatePlannerLaunch();
   }
 }
+
+function applyAutoTsunami() {
   var active = cards.filter(function(c){ return !c.empty && (c.balance||0) > 0; });
   var prevTotalMonthly = 0;
   active.forEach(function(c, i) {
@@ -5219,6 +5221,8 @@ function toggleAutoTsunami() {
   if (typeof currentView === "undefined" || currentView !== "ledger") render();
   else if (typeof updatePlannerLaunch === "function") updatePlannerLaunch();
 }
+
+function moveLedgerCard(id, dir) {
   var active = cards.filter(function(c){ return !c.empty; });
   var empty = cards.filter(function(c){ return c.empty; });
   var idx = active.findIndex(function(c){ return c.id == id; });
