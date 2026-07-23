@@ -307,42 +307,42 @@ input.tright.dark-input[type="date"] { font-size:clamp(8px, 3.8cqh, 12px); }
 .promo-overlay {
   position:absolute; inset:0; z-index:40;
   background:rgba(120,0,0,0.97); border-radius:20px;
-  padding:8px 10px 9px; box-sizing:border-box;
-  display:none; flex-direction:column; justify-content:space-evenly; gap:4px;
+  padding:6px 8px 7px; box-sizing:border-box;
+  display:none; flex-direction:column; justify-content:space-evenly; gap:3px;
   overflow:hidden;
 }
 .promo-overlay.show { display:flex; }
-.po-close { width:24px; height:24px; border-radius:6px; border:1.5px solid rgba(255,255,255,0.55); background:rgba(255,255,255,0.12); color:#fff; font-size:13px; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.po-close { width:22px; height:22px; border-radius:5px; border:1.5px solid rgba(255,255,255,0.5); background:rgba(255,255,255,0.1); color:#fff; font-size:12px; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .po-header { display:flex; justify-content:space-between; align-items:center; flex-shrink:0; margin:0; }
-.po-title { font-family:'Bebas Neue',sans-serif; font-size:15px; letter-spacing:0.1em; color:#fff; line-height:1; }
+.po-title { font-family:'Bebas Neue',sans-serif; font-size:clamp(10px, 4.5cqh, 14px); letter-spacing:0.1em; color:#fff; line-height:1; }
 .po-section-label { display:none; }
 .po-stat-value.gap { color:#ffdd44; }
 
-/* Content-sized fields — no outer cell chrome, no stretched empty boxes */
+/* Match card-face type (tlabel/tvalue ~8–12px). Content-sized fields, no outer cell chrome. */
 .po-input-grid { display:flex; justify-content:space-evenly; align-items:flex-start; gap:6px; flex-shrink:0; margin:0; }
-.po-ig-cell { display:flex; flex-direction:column; align-items:center; gap:2px; text-align:center; width:auto; min-width:0; background:none; padding:0; border-radius:0; }
-.po-ig-label { font-size:11px; font-weight:700; color:rgba(255,255,255,0.78); letter-spacing:0.05em; text-transform:uppercase; line-height:1.1; white-space:nowrap; }
-.po-ig-input { width:2.25ch; min-width:28px; max-width:none; box-sizing:content-box; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.3); border-radius:5px; color:#fff; font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:0.03em; padding:1px 7px; text-align:center; outline:none; line-height:1.15; -moz-appearance:textfield; appearance:textfield; }
+.po-ig-cell { display:flex; flex-direction:column; align-items:center; gap:1px; text-align:center; width:auto; min-width:0; background:none; padding:0; border-radius:0; }
+.po-ig-label { font-size:clamp(8px, 3.8cqh, 12px); font-weight:700; color:rgba(255,255,255,0.7); letter-spacing:0.04em; text-transform:uppercase; line-height:1.1; white-space:nowrap; }
+.po-ig-input { width:2.25ch; min-width:22px; max-width:none; box-sizing:content-box; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.28); border-radius:5px; color:#fff; font-family:'DM Sans',sans-serif; font-size:clamp(8px, 3.8cqh, 12px); font-weight:500; padding:1px 6px; text-align:center; outline:none; line-height:1.1; -moz-appearance:textfield; appearance:textfield; }
 .po-ig-input::-webkit-outer-spin-button,
 .po-ig-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
 .po-ig-input:focus { border-color:rgba(100,200,255,0.6); }
-.po-ig-value { width:fit-content; max-width:100%; background:none; border-radius:0; padding:0; font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:0.03em; color:#22ccff; text-align:center; line-height:1.15; white-space:nowrap; }
-.po-stat-grid { display:flex; flex-wrap:nowrap; justify-content:space-evenly; align-items:flex-start; gap:4px 8px; flex-shrink:0; }
+.po-ig-value { width:fit-content; max-width:100%; background:none; border-radius:0; padding:0; font-family:'DM Sans',sans-serif; font-size:clamp(8px, 3.8cqh, 12px); font-weight:600; color:#22ccff; text-align:center; line-height:1.1; white-space:nowrap; }
+.po-stat-grid { display:flex; flex-wrap:nowrap; justify-content:space-evenly; align-items:flex-start; gap:3px 6px; flex-shrink:0; }
 .po-sg-cell { background:none; border-radius:0; padding:0; min-width:0; width:auto; flex:0 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
-.po-sg-cell.po-sg-wide { flex:1 1 100%; width:100%; display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:nowrap; padding:2px 0 0; background:none; }
+.po-sg-cell.po-sg-wide { flex:1 1 100%; width:100%; display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:nowrap; padding:1px 0 0; background:none; }
 .po-sg-cell.po-sg-wide .po-sg-value { margin-top:0; }
-.po-apr-cluster { display:flex; align-items:center; justify-content:center; gap:16px; min-width:0; width:auto; }
-.po-apr-field { display:flex; flex-direction:column; align-items:center; gap:2px; flex-shrink:0; }
-.po-apr-row { display:flex; align-items:center; gap:3px; }
-.po-apr-input { width:2.25ch; min-width:28px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.35); border-radius:5px; color:#ffaa33; font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:0.03em; text-align:center; outline:none; padding:1px 7px; line-height:1.15; -moz-appearance:textfield; appearance:textfield; }
+.po-apr-cluster { display:flex; align-items:center; justify-content:center; gap:12px; min-width:0; width:auto; }
+.po-apr-field { display:flex; flex-direction:column; align-items:center; gap:1px; flex-shrink:0; }
+.po-apr-row { display:flex; align-items:center; gap:2px; }
+.po-apr-input { width:2.25ch; min-width:22px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.3); border-radius:5px; color:#ffaa33; font-family:'DM Sans',sans-serif; font-size:clamp(8px, 3.8cqh, 12px); font-weight:600; text-align:center; outline:none; padding:1px 6px; line-height:1.1; -moz-appearance:textfield; appearance:textfield; }
 .po-apr-input::-webkit-outer-spin-button,
 .po-apr-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
-.po-apr-pct { color:#ffaa33; font-family:'Bebas Neue',sans-serif; font-size:15px; }
-.po-interest-field { display:flex; flex-direction:column; align-items:center; gap:2px; min-width:0; flex:0 1 auto; }
-.po-sg-label { font-size:11px; font-weight:700; color:rgba(255,255,255,0.78); letter-spacing:0.05em; text-transform:uppercase; line-height:1.1; white-space:nowrap; }
-.po-sg-value { font-family:'Bebas Neue',sans-serif; font-size:17px; letter-spacing:0.02em; color:#fff; margin-top:0; white-space:nowrap; line-height:1.15; overflow:visible; text-overflow:clip; }
+.po-apr-pct { color:#ffaa33; font-family:'DM Sans',sans-serif; font-size:clamp(8px, 3.8cqh, 12px); font-weight:600; }
+.po-interest-field { display:flex; flex-direction:column; align-items:center; gap:1px; min-width:0; flex:0 1 auto; }
+.po-sg-label { font-size:clamp(8px, 3.8cqh, 12px); font-weight:700; color:rgba(255,255,255,0.7); letter-spacing:0.04em; text-transform:uppercase; line-height:1.1; white-space:nowrap; }
+.po-sg-value { font-family:'DM Sans',sans-serif; font-size:clamp(8px, 3.8cqh, 12px); font-weight:600; color:#fff; margin-top:0; white-space:nowrap; line-height:1.1; overflow:visible; text-overflow:clip; }
 .po-sg-value.gap { color:#ffdd44; }
-.po-sg-value.orange { color:#ffaa33; font-size:18px; }
+.po-sg-value.orange { color:#ffaa33; font-size:clamp(8px, 3.8cqh, 12px); }
 .po-input-field:focus { border-color:rgba(100,200,255,0.6); }
 .po-divider { display:none; }
 
@@ -4550,7 +4550,7 @@ function buildCardEl(c, slotNum) {
         '<div class="po-sg-cell"><div class="po-sg-label">MO LEFT</div><div class="po-sg-value" id="pom-'+cid+'">--</div></div>' +
         '<div class="po-sg-cell"><div class="po-sg-label">YOUR/MO</div><div class="po-sg-value" id="pot-'+cid+'">--</div></div>' +
         '<div class="po-sg-cell"><div class="po-sg-label">GAP</div><div class="po-sg-value" id="pog-'+cid+'">--</div></div>' +
-        '<div class="po-sg-cell"><div class="po-sg-label">BAL</div><div class="po-sg-value" id="porb-'+cid+'">'+(c.balance?'$'+Math.round(c.balance):'--')+'</div></div>' +
+        '<div class="po-sg-cell"><div class="po-sg-label">REMAINING BAL</div><div class="po-sg-value" id="porb-'+cid+'">'+(c.balance?'$'+Math.round(c.balance):'--')+'</div></div>' +
         '<div class="po-sg-cell po-sg-wide">' +
           '<div class="po-apr-cluster">' +
             '<div class="po-apr-field"><div class="po-sg-label">APR %</div><div class="po-apr-row"><input class="po-apr-input" type="number" id="fld-papr-'+cid+'" value="'+((parseFloat(c.promoApr)>0?c.promoApr:30))+'" min="1" max="99" oninput="setPromoApr('+cid+',this.value)"><span class="po-apr-pct">%</span></div></div>' +
