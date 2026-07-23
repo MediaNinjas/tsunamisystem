@@ -303,6 +303,12 @@ input.tright.dark-input[type="date"] { font-size:clamp(8px, 3.8cqh, 12px); }
 
 /* ============= PROMO CLIFF WARNING SYSTEM ============= */
 .tsunami-card.promo-alert { border-color:#cc1111 !important; box-shadow:0 12px 40px rgba(0,0,0,0.5), 0 0 0 2px rgba(204,17,17,0.5), 0 0 24px rgba(204,17,17,0.25) !important; }
+/* Grow the card when promo is open so rows can breathe */
+.tsunami-card:has(.promo-overlay.show) {
+  aspect-ratio:auto;
+  height:auto;
+  min-height:300px;
+}
 
 .promo-toggle-row { padding:0 12px 10px; text-align:center; position:relative; z-index:2; }
 .promo-toggle { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); font-family:'DM Sans',sans-serif; font-size:10px; font-weight:700; letter-spacing:0.1em; padding:5px 10px; border-radius:6px; cursor:pointer; text-transform:uppercase; }
@@ -315,50 +321,48 @@ input.tright.dark-input[type="date"] { font-size:clamp(8px, 3.8cqh, 12px); }
 .promo-field-input { display:flex; align-items:center; padding:3px 6px; font-size:clamp(8px,1.1vw,11px); color:#111; background:#fff; border-radius:5px; border:none; outline:none; font-family:'DM Sans',sans-serif; width:100%; }
 .promo-end-display { display:flex; align-items:center; justify-content:center; padding:3px 6px; font-size:clamp(8px,1.1vw,11px); color:rgba(255,255,255,0.6); background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); border-radius:5px; font-style:italic; }
 
+/* Promo overlay — card-table style rows, same field IDs/wiring */
 .promo-overlay {
   position:absolute; inset:0; z-index:40;
   background:rgba(120,0,0,0.97); border-radius:20px;
-  padding:6px 8px 7px; box-sizing:border-box;
-  display:none; flex-direction:column; justify-content:space-evenly; gap:3px;
-  overflow:hidden;
+  padding:10px 12px 12px; box-sizing:border-box;
+  display:none; flex-direction:column; gap:6px;
+  overflow:auto;
 }
 .promo-overlay.show { display:flex; }
-.po-close { width:22px; height:22px; border-radius:5px; border:1.5px solid rgba(255,255,255,0.5); background:rgba(255,255,255,0.1); color:#fff; font-size:12px; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.po-header { display:flex; justify-content:space-between; align-items:center; flex-shrink:0; margin:0; }
-.po-title { font-family:'Bebas Neue',sans-serif; font-size:clamp(10px, 4.5cqh, 14px); letter-spacing:0.1em; color:#fff; line-height:1; }
-.po-section-label { display:none; }
-.po-stat-value.gap { color:#ffdd44; }
-
-/* Match card-face type (tlabel/tvalue ~8–12px). Content-sized fields, no outer cell chrome. */
-.po-input-grid { display:flex; justify-content:space-evenly; align-items:flex-start; gap:6px; flex-shrink:0; margin:0; }
-.po-ig-cell { display:flex; flex-direction:column; align-items:center; gap:1px; text-align:center; width:auto; min-width:0; background:none; padding:0; border-radius:0; }
-.po-ig-label { font-size:clamp(8px, 3.8cqh, 12px); font-weight:700; color:rgba(255,255,255,0.7); letter-spacing:0.04em; text-transform:uppercase; line-height:1.1; white-space:nowrap; }
-.po-ig-input { width:2.25ch; min-width:22px; max-width:none; box-sizing:content-box; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.28); border-radius:5px; color:#fff; font-family:'DM Sans',sans-serif; font-size:clamp(8px, 3.8cqh, 12px); font-weight:500; padding:1px 6px; text-align:center; outline:none; line-height:1.1; -moz-appearance:textfield; appearance:textfield; }
-.po-ig-input::-webkit-outer-spin-button,
-.po-ig-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
-.po-ig-input:focus { border-color:rgba(100,200,255,0.6); }
-.po-ig-value { width:fit-content; max-width:100%; background:none; border-radius:0; padding:0; font-family:'DM Sans',sans-serif; font-size:clamp(8px, 3.8cqh, 12px); font-weight:600; color:#22ccff; text-align:center; line-height:1.1; white-space:nowrap; }
-.po-stat-grid { display:flex; flex-wrap:nowrap; justify-content:space-evenly; align-items:flex-start; gap:3px 6px; flex-shrink:0; }
-.po-sg-cell { background:none; border-radius:0; padding:0; min-width:0; width:auto; flex:0 1 auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
-.po-sg-cell.po-sg-wide { flex:1 1 100%; width:100%; display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:nowrap; padding:1px 0 0; background:none; }
-.po-sg-cell.po-sg-wide .po-sg-value { margin-top:0; }
-.po-apr-cluster { display:flex; align-items:center; justify-content:center; gap:12px; min-width:0; width:auto; }
-.po-apr-field { display:flex; flex-direction:column; align-items:center; gap:1px; flex-shrink:0; }
-.po-apr-row { display:flex; align-items:center; gap:2px; }
-.po-apr-input { width:2.25ch; min-width:22px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.3); border-radius:5px; color:#ffaa33; font-family:'DM Sans',sans-serif; font-size:clamp(8px, 3.8cqh, 12px); font-weight:600; text-align:center; outline:none; padding:1px 6px; line-height:1.1; -moz-appearance:textfield; appearance:textfield; }
-.po-apr-input::-webkit-outer-spin-button,
-.po-apr-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
-.po-apr-pct { color:#ffaa33; font-family:'DM Sans',sans-serif; font-size:clamp(8px, 3.8cqh, 12px); font-weight:600; }
-.po-interest-field { display:flex; flex-direction:column; align-items:center; gap:1px; min-width:0; flex:0 1 auto; }
-.po-sg-label { font-size:clamp(8px, 3.8cqh, 12px); font-weight:700; color:rgba(255,255,255,0.7); letter-spacing:0.04em; text-transform:uppercase; line-height:1.1; white-space:nowrap; }
-.po-sg-value { font-family:'DM Sans',sans-serif; font-size:clamp(8px, 3.8cqh, 12px); font-weight:600; color:#fff; margin-top:0; white-space:nowrap; line-height:1.1; overflow:visible; text-overflow:clip; }
-.po-sg-value.gap { color:#ffdd44; }
-.po-sg-value.orange { color:#ffaa33; font-size:clamp(8px, 3.8cqh, 12px); }
-.po-input-field:focus { border-color:rgba(100,200,255,0.6); }
-.po-divider { display:none; }
-
-
-
+.po-close {
+  width:26px; height:26px; border-radius:6px; border:1.5px solid rgba(255,255,255,0.55);
+  background:rgba(255,255,255,0.12); color:#fff; font-size:14px; font-weight:900;
+  cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.po-header { display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+.po-title { font-family:'Bebas Neue',sans-serif; font-size:15px; letter-spacing:0.1em; color:#fff; line-height:1; }
+.po-body { display:flex; flex-direction:column; gap:4px; flex:1; min-height:0; }
+.po-row {
+  display:grid; grid-template-columns:1.15fr 1fr 1.15fr 1fr; gap:4px; align-items:stretch;
+  flex:1; min-height:30px;
+}
+.po-row.po-row-full { grid-template-columns:1.15fr 1fr 1.15fr 1fr; }
+.po-lab {
+  display:flex; align-items:center; justify-content:flex-end;
+  padding:4px 8px; font-size:11px; font-weight:700; color:#111; background:#fff;
+  border-radius:5px; text-align:right; line-height:1.15;
+}
+.po-val, input.po-val {
+  display:flex; align-items:center; justify-content:flex-start;
+  width:100%; box-sizing:border-box; min-width:0;
+  padding:4px 8px; font-size:12px; font-weight:600; font-family:'DM Sans',sans-serif;
+  color:#111; background:#fff; border:none; border-radius:5px; outline:none; line-height:1.15;
+}
+input.po-val { -webkit-appearance:none; appearance:none; }
+input.po-val:focus { background:#fffde0; }
+.po-val.cyan { color:#0a6a8a; font-family:'Bebas Neue',sans-serif; font-size:14px; letter-spacing:0.04em; }
+.po-val.gap { color:#8a6000; background:#ffe9a8; }
+.po-val.orange { color:#a05000; }
+input.po-val.orange { color:#a05000; }
+.po-apr-wrap { display:flex; align-items:center; gap:4px; background:#fff; border-radius:5px; padding:0 8px; min-width:0; }
+.po-apr-wrap input.po-val { flex:1; padding-left:0; padding-right:0; background:transparent; }
+.po-apr-wrap .po-apr-pct { color:#a05000; font-size:12px; font-weight:700; flex-shrink:0; }
 
 /* LEDGER VIEW */
 #ledger-view { display:none; }
@@ -4659,42 +4663,40 @@ function buildCardEl(c, slotNum) {
     '</div>' +
 
     '<div class="promo-overlay'+(c.promoOn?' show':'')+'" id="po-'+cid+'">' +
-
       '<div class="po-header">' +
         '<div class="po-title">&#9201; PROMO TERMS</div>' +
-        '<button class="po-close" onclick="dismissPromo('+cid+')">&#10005;</button>' +
+        '<button class="po-close" type="button" onclick="dismissPromo('+cid+')">&#10005;</button>' +
       '</div>' +
-
-      '<div class="po-input-grid">' +
-        '<div class="po-ig-cell">' +
-          '<div class="po-ig-label">MONTHS</div>' +
-          '<input class="po-ig-input" id="fld-pmonths-'+cid+'" type="number" inputmode="numeric" value="'+(c.promoMonths||'')+'" placeholder="0" oninput="setPromoMonths('+cid+',this.value)">' +
+      '<div class="po-body">' +
+        '<div class="po-row">' +
+          '<div class="po-lab">Months</div>' +
+          '<input class="po-val" id="fld-pmonths-'+cid+'" type="number" inputmode="numeric" value="'+(c.promoMonths||'')+'" placeholder="0" oninput="setPromoMonths('+cid+',this.value)">' +
+          '<div class="po-lab">Warn Mo</div>' +
+          '<input class="po-val" id="fld-pwarn-'+cid+'" type="number" inputmode="numeric" value="'+(c.promoWarn||3)+'" placeholder="3" oninput="setPromoWarn('+cid+',this.value)">' +
         '</div>' +
-        '<div class="po-ig-cell">' +
-          '<div class="po-ig-label">WARN MO</div>' +
-          '<input class="po-ig-input" id="fld-pwarn-'+cid+'" type="number" inputmode="numeric" value="'+(c.promoWarn||3)+'" placeholder="3" oninput="setPromoWarn('+cid+',this.value)">' +
+        '<div class="po-row">' +
+          '<div class="po-lab">End Date</div>' +
+          '<div class="po-val cyan" id="pend-'+cid+'">'+(c.promoEnd?fmtMonthYear(c.promoEnd):'--')+'</div>' +
+          '<div class="po-lab">Mo Left</div>' +
+          '<div class="po-val" id="pom-'+cid+'">--</div>' +
         '</div>' +
-        '<div class="po-ig-cell">' +
-          '<div class="po-ig-label">END DATE</div>' +
-          '<div class="po-ig-value" id="pend-'+cid+'">'+(c.promoEnd?fmtMonthYear(c.promoEnd):'--')+'</div>' +
+        '<div class="po-row">' +
+          '<div class="po-lab">Your / Mo</div>' +
+          '<div class="po-val" id="pot-'+cid+'">--</div>' +
+          '<div class="po-lab">Gap</div>' +
+          '<div class="po-val" id="pog-'+cid+'">--</div>' +
+        '</div>' +
+        '<div class="po-row">' +
+          '<div class="po-lab">Remaining Bal</div>' +
+          '<div class="po-val" id="porb-'+cid+'">'+(c.balance?'$'+Math.round(c.balance):'--')+'</div>' +
+          '<div class="po-lab">APR %</div>' +
+          '<div class="po-apr-wrap"><input class="po-val orange" type="number" id="fld-papr-'+cid+'" value="'+((parseFloat(c.promoApr)>0?c.promoApr:30))+'" min="1" max="99" oninput="setPromoApr('+cid+',this.value)"><span class="po-apr-pct">%</span></div>' +
+        '</div>' +
+        '<div class="po-row">' +
+          '<div class="po-lab">Est. Interest If Missed</div>' +
+          '<div class="po-val orange" id="poit-'+cid+'" style="grid-column:2 / -1;">'+(c.promoMonths?'$'+Math.round((c.balance||0)*(promoAprOf(c)/12/100)*c.promoMonths)+' est':'--')+'</div>' +
         '</div>' +
       '</div>' +
-
-      '<div class="po-divider"></div>' +
-
-      '<div class="po-stat-grid">' +
-        '<div class="po-sg-cell"><div class="po-sg-label">MO LEFT</div><div class="po-sg-value" id="pom-'+cid+'">--</div></div>' +
-        '<div class="po-sg-cell"><div class="po-sg-label">YOUR/MO</div><div class="po-sg-value" id="pot-'+cid+'">--</div></div>' +
-        '<div class="po-sg-cell"><div class="po-sg-label">GAP</div><div class="po-sg-value" id="pog-'+cid+'">--</div></div>' +
-        '<div class="po-sg-cell"><div class="po-sg-label">REMAINING BAL</div><div class="po-sg-value" id="porb-'+cid+'">'+(c.balance?'$'+Math.round(c.balance):'--')+'</div></div>' +
-        '<div class="po-sg-cell po-sg-wide">' +
-          '<div class="po-apr-cluster">' +
-            '<div class="po-apr-field"><div class="po-sg-label">APR %</div><div class="po-apr-row"><input class="po-apr-input" type="number" id="fld-papr-'+cid+'" value="'+((parseFloat(c.promoApr)>0?c.promoApr:30))+'" min="1" max="99" oninput="setPromoApr('+cid+',this.value)"><span class="po-apr-pct">%</span></div></div>' +
-            '<div class="po-interest-field"><div class="po-sg-label">EST. INTEREST IF MISSED</div><div class="po-sg-value orange" id="poit-'+cid+'">'+(c.promoMonths?'$'+Math.round((c.balance||0)*(promoAprOf(c)/12/100)*c.promoMonths)+' est':'--')+'</div></div>' +
-          '</div>' +
-        '</div>' +
-      '</div>' +
-
     '</div></div>';
 
   card.innerHTML = innerHTML;
@@ -4807,7 +4809,12 @@ function updatePlannerLaunch() {
   }
   wrap.classList.add('show');
   wrap.setAttribute('aria-hidden', 'false');
-  btn.onclick = function(){ showPlanner(target.id); };
+  btn.onclick = function(){
+    var panel = document.getElementById('planner-panel');
+    var open = panel && panel.style.display !== 'none' && panel.dataset.cardId === String(target.id);
+    if (open) closePlanner();
+    else showPlanner(target.id);
+  };
 }
 
 var currentSortMode = "";
@@ -5063,7 +5070,7 @@ function checkPromoWarning(cardId) {
   if (gel) {
     var gap = required - totalMonthly;
     gel.textContent = gap > 0 ? "+$"+Math.ceil(gap)+" SHORT" : "ON TRACK";
-    gel.className = "po-sg-value"+(gap > 0 ? " gap" : "");
+    gel.className = "po-val"+(gap > 0 ? " gap" : "");
   }
   if (rbel) rbel.textContent = balance ? "$"+Math.round(balance) : "--";
   if (itEl) {
