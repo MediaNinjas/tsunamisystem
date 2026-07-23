@@ -117,7 +117,21 @@ input.tvalue.ed { border:none; outline:none; font-family:'DM Sans',sans-serif; w
 input.tvalue.ed:focus { background:#fffde0; }
 .card-name-input { flex:1; background:transparent; border:none; outline:none; font-family:'Bebas Neue',sans-serif; font-size:clamp(11px, 5cqh, 18px); letter-spacing:0.15em; color:#fff; text-align:center; width:100%; min-width:0; }
 .card-name-input::placeholder { color:rgba(255,255,255,0.4); }
-input.ed-green { border:none; outline:none; font-family:'DM Sans',sans-serif; color:#fff; text-align:right; width:100%; background:#1d9944; font-weight:700; padding-right:8px; -webkit-appearance:none; }
+input.ed-green {
+  border:none; outline:none; font-family:'DM Sans',sans-serif;
+  color:#fff !important; -webkit-text-fill-color:#fff !important; caret-color:#fff;
+  text-align:right; width:100%; background:#1d9944; font-weight:700; padding-right:8px;
+  -webkit-appearance:none; appearance:none;
+}
+input.ed-green::placeholder { color:rgba(255,255,255,0.55) !important; -webkit-text-fill-color:rgba(255,255,255,0.55) !important; }
+input.ed-green:focus { color:#fff !important; -webkit-text-fill-color:#fff !important; }
+input.ed-green:-webkit-autofill,
+input.ed-green:-webkit-autofill:hover,
+input.ed-green:-webkit-autofill:focus {
+  -webkit-text-fill-color:#fff !important;
+  box-shadow:0 0 0 1000px #1d9944 inset !important;
+  transition:background-color 99999s ease-out;
+}
 input.ed-cred { border:none; outline:none; font-family:'DM Sans',sans-serif; color:#fff; text-align:center; width:100%; text-transform:uppercase; font-size:clamp(7px,0.9vw,10px); letter-spacing:0.1em; }
 .tright.ed-stack { display:flex; flex-direction:column; padding:2px 4px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); gap:0; justify-content:center; align-items:stretch; }
 .ed-stack-label { font-size:7px; color:rgba(255,255,255,0.5); letter-spacing:0.1em; text-align:center; text-transform:uppercase; font-weight:700; line-height:1; margin-bottom:2px; }
@@ -131,7 +145,8 @@ input.ed-promo { border:none; outline:none; font-family:'DM Sans',sans-serif; co
 .tright { display:flex; align-items:center; justify-content:center; padding:1px 6px; border-radius:5px; font-size:clamp(7px, 3.5cqh, 12px); font-weight:700; text-align:center; line-height:1.1; min-height:0; }
 .tright.empty-cell { background:transparent; }
 .tright.tsunami-red { background:linear-gradient(135deg,#cc1111,#aa0000); color:#fff; font-family:'Bebas Neue',sans-serif; font-size:clamp(8px, 3.8cqh, 12px); letter-spacing:0.1em; }
-.tright.tsunami-green { background:#1d9944; color:#fff; font-weight:700; justify-content:flex-end; padding-right:8px; }
+.tright.tsunami-green { background:#1d9944; color:#fff !important; -webkit-text-fill-color:#fff !important; font-weight:700; justify-content:flex-end; padding-right:8px; }
+input.tright.tsunami-green { color:#fff !important; -webkit-text-fill-color:#fff !important; caret-color:#fff; }
 .tright.credentials { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.5); font-size:clamp(7px, 3.2cqh, 10px); letter-spacing:0.1em; text-transform:uppercase; }
 .tright.dark-box { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); }
 input.tright.dark-input { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); color:#fff; font-family:'DM Sans',sans-serif; text-align:center; outline:none; font-size:clamp(8px, 3.8cqh, 12px); padding:1px 4px; max-height:100%; box-sizing:border-box; }
@@ -289,32 +304,38 @@ input.tright.dark-input[type="date"] { font-size:clamp(8px, 3.8cqh, 12px); }
 .promo-field-input { display:flex; align-items:center; padding:3px 6px; font-size:clamp(8px,1.1vw,11px); color:#111; background:#fff; border-radius:5px; border:none; outline:none; font-family:'DM Sans',sans-serif; width:100%; }
 .promo-end-display { display:flex; align-items:center; justify-content:center; padding:3px 6px; font-size:clamp(8px,1.1vw,11px); color:rgba(255,255,255,0.6); background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); border-radius:5px; font-style:italic; }
 
-.promo-overlay { position:absolute; inset:0; z-index:40; background:rgba(120,0,0,0.97); border-radius:20px; padding:8px 10px; display:none; flex-direction:column; gap:3px; overflow-y:auto; }
+.promo-overlay {
+  position:absolute; inset:0; z-index:40;
+  background:rgba(120,0,0,0.97); border-radius:20px;
+  padding:4px 8px 5px; box-sizing:border-box;
+  display:none; flex-direction:column; justify-content:space-between; gap:2px;
+  overflow:hidden; /* fit the 16:9 face — no scrollbar */
+}
 .promo-overlay.show { display:flex; }
-.po-close { width:28px; height:28px; border-radius:6px; border:1.5px solid rgba(255,255,255,0.5); background:rgba(255,255,255,0.1); color:#fff; font-size:14px; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.po-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:3px; }
-.po-title { font-family:'Bebas Neue',sans-serif; font-size:14px; letter-spacing:0.1em; color:#fff; }
+.po-close { width:22px; height:22px; border-radius:5px; border:1.5px solid rgba(255,255,255,0.5); background:rgba(255,255,255,0.1); color:#fff; font-size:12px; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.po-header { display:flex; justify-content:space-between; align-items:center; flex-shrink:0; margin:0; }
+.po-title { font-family:'Bebas Neue',sans-serif; font-size:12px; letter-spacing:0.08em; color:#fff; line-height:1; }
 .po-section-label { display:none; }
 .po-stat-value.gap { color:#ffdd44; }
 
-.po-input-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:3px; margin-bottom:2px; }
-.po-ig-cell { display:flex; flex-direction:column; gap:1px; text-align:center; min-width:0; }
-.po-ig-label { font-size:6px; color:rgba(255,255,255,0.5); letter-spacing:0.04em; text-transform:uppercase; }
-.po-ig-input { width:100%; box-sizing:border-box; background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; font-family:'DM Sans',sans-serif; font-size:11px; padding:2px 3px; text-align:center; outline:none; }
+.po-input-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:3px; flex-shrink:0; margin:0; }
+.po-ig-cell { display:flex; flex-direction:column; gap:0; text-align:center; min-width:0; }
+.po-ig-label { font-size:6px; color:rgba(255,255,255,0.5); letter-spacing:0.04em; text-transform:uppercase; line-height:1.1; }
+.po-ig-input { width:100%; box-sizing:border-box; background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.2); border-radius:3px; color:#fff; font-family:'DM Sans',sans-serif; font-size:10px; padding:1px 2px; text-align:center; outline:none; line-height:1.2; }
 .po-ig-input:focus { border-color:rgba(100,200,255,0.6); }
-.po-ig-value { background:rgba(255,255,255,0.08); border-radius:4px; padding:2px 3px; font-family:'Bebas Neue',sans-serif; font-size:10px; color:#22ccff; text-align:center; }
-.po-stat-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px; }
-.po-sg-cell { background:rgba(255,255,255,0.08); border-radius:4px; padding:2px 4px; min-width:0; }
-/* Interest row: APR + interest estimate sit side-by-side (not opposite ends of the card). */
-.po-sg-cell.po-sg-wide { grid-column:1/-1; display:flex; align-items:flex-end; justify-content:flex-start; gap:10px; flex-wrap:wrap; }
+.po-ig-value { background:rgba(255,255,255,0.08); border-radius:3px; padding:1px 2px; font-family:'Bebas Neue',sans-serif; font-size:10px; color:#22ccff; text-align:center; line-height:1.2; }
+.po-stat-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px; flex-shrink:0; }
+.po-sg-cell { background:rgba(255,255,255,0.08); border-radius:3px; padding:1px 3px; min-width:0; }
+/* APR + interest estimate sit together as one compact bottom strip */
+.po-sg-cell.po-sg-wide { grid-column:1/-1; display:flex; align-items:center; justify-content:flex-start; gap:8px; flex-wrap:nowrap; padding:2px 4px; }
 .po-sg-cell.po-sg-wide .po-sg-value { margin-top:0; }
-.po-apr-cluster { display:flex; align-items:flex-end; gap:8px; min-width:0; }
-.po-sg-label { font-size:6px; color:rgba(255,255,255,0.5); letter-spacing:0.04em; text-transform:uppercase; }
-.po-sg-value { font-family:'Bebas Neue',sans-serif; font-size:11px; color:#fff; margin-top:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.po-apr-cluster { display:flex; align-items:center; gap:8px; min-width:0; width:100%; }
+.po-sg-label { font-size:6px; color:rgba(255,255,255,0.5); letter-spacing:0.04em; text-transform:uppercase; line-height:1.1; }
+.po-sg-value { font-family:'Bebas Neue',sans-serif; font-size:10px; color:#fff; margin-top:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.15; }
 .po-sg-value.gap { color:#ffdd44; }
 .po-sg-value.orange { color:#ffaa33; }
 .po-input-field:focus { border-color:rgba(100,200,255,0.6); }
-.po-divider { height:1px; background:rgba(255,255,255,0.12); margin:2px 0; }
+.po-divider { display:none; }
 
 
 
@@ -334,11 +355,16 @@ input.tright.dark-input[type="date"] { font-size:clamp(8px, 3.8cqh, 12px); }
 .ledger-bal { color:#ff4433; font-weight:700; }
 .ledger-bal-paid { color:#33cc66; font-weight:700; }
 .ledger-tm { color:#6699ff; font-weight:700; }
-.ledger-tsunami { color:#fff !important; font-weight:700; }
-.ledger-tsunami::-webkit-input-placeholder { color:rgba(0,255,120,0.4); }
+.ledger-tsunami { color:#fff !important; -webkit-text-fill-color:#fff !important; font-weight:700; caret-color:#fff; }
+.ledger-tsunami::-webkit-input-placeholder { color:rgba(255,255,255,0.45) !important; -webkit-text-fill-color:rgba(255,255,255,0.45) !important; }
 .ledger-tsunami::-webkit-textfield-decoration-container { color:#fff !important; }
-input.ledger-tsunami { -webkit-text-fill-color:#fff !important; color:#fff !important; }
-.ledger-tsunami::placeholder { color:rgba(51,204,119,0.4); }
+input.ledger-tsunami { -webkit-text-fill-color:#fff !important; color:#fff !important; caret-color:#fff; background:transparent; }
+.ledger-tsunami::placeholder { color:rgba(255,255,255,0.45) !important; -webkit-text-fill-color:rgba(255,255,255,0.45) !important; }
+input.ledger-tsunami:-webkit-autofill,
+input.ledger-tsunami:-webkit-autofill:focus {
+  -webkit-text-fill-color:#fff !important;
+  box-shadow:0 0 0 1000px #111 inset !important;
+}
 .ledger-del-btn { background:rgba(204,17,17,0.2); border:1.5px solid rgba(204,17,17,0.5); color:#ff4444; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px; font-weight:900; }
 .ledger-del-btn:hover { background:rgba(204,17,17,0.4); }
 .ledger-confirm-row td { background:rgba(180,0,0,0.15); padding:8px 8px; }
@@ -4518,17 +4544,11 @@ function buildCardEl(c, slotNum) {
         '<div class="po-sg-cell"><div class="po-sg-label">REMAINING BAL</div><div class="po-sg-value" id="porb-'+cid+'">'+(c.balance?'$'+Math.round(c.balance):'--')+'</div></div>' +
         '<div class="po-sg-cell po-sg-wide">' +
           '<div class="po-apr-cluster">' +
-            '<div style="display:flex;flex-direction:column;gap:1px;flex-shrink:0;"><div class="po-sg-label">APR %</div><div style="display:flex;align-items:center;gap:2px;"><input type="number" id="fld-papr-'+cid+'" value="'+((parseFloat(c.promoApr)>0?c.promoApr:30))+'" min="1" max="99" style="width:34px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.3);border-radius:4px;color:#ffaa33;font-size:11px;text-align:center;outline:none;padding:1px 2px;" oninput="setPromoApr('+cid+',this.value)"><span style="color:#ffaa33;font-size:9px;">%</span></div></div>' +
-            '<div style="display:flex;flex-direction:column;gap:1px;"><div class="po-sg-label">EST. INTEREST IF MISSED</div><div class="po-sg-value orange" id="poit-'+cid+'">'+(c.promoMonths?'$'+Math.round((c.balance||0)*(promoAprOf(c)/12/100)*c.promoMonths)+' est':'--')+'</div></div>' +
+            '<div style="display:flex;flex-direction:column;gap:0;flex-shrink:0;"><div class="po-sg-label">APR %</div><div style="display:flex;align-items:center;gap:2px;"><input type="number" id="fld-papr-'+cid+'" value="'+((parseFloat(c.promoApr)>0?c.promoApr:30))+'" min="1" max="99" style="width:32px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.3);border-radius:3px;color:#ffaa33;font-size:10px;text-align:center;outline:none;padding:1px 2px;line-height:1.2;" oninput="setPromoApr('+cid+',this.value)"><span style="color:#ffaa33;font-size:8px;">%</span></div></div>' +
+            '<div style="display:flex;flex-direction:column;gap:0;min-width:0;"><div class="po-sg-label">EST. INTEREST IF MISSED</div><div class="po-sg-value orange" id="poit-'+cid+'">'+(c.promoMonths?'$'+Math.round((c.balance||0)*(promoAprOf(c)/12/100)*c.promoMonths)+' est':'--')+'</div></div>' +
           '</div>' +
         '</div>' +
       '</div>' +
-
-      '<div class="po-divider"></div>' +
-
-      '' +
-      '' +
-      '' +
 
     '</div></div>';
 
@@ -4625,6 +4645,14 @@ function updatePlannerLaunch() {
   var wrap = document.getElementById('planner-launch');
   var btn = document.getElementById('planner-launch-btn');
   if (!wrap || !btn) return;
+  // Never show on ledger — Auto Tsunami / render() was re-showing it and shoving the row.
+  if (typeof currentView !== "undefined" && currentView === "ledger") {
+    wrap.classList.remove("show");
+    wrap.setAttribute("aria-hidden", "true");
+    btn.onclick = null;
+    if (typeof closePlanner === "function") closePlanner();
+    return;
+  }
   var target = getTarget();
   if (!target) {
     wrap.classList.remove('show');
@@ -5169,11 +5197,10 @@ function toggleAutoTsunami() {
     cards.forEach(function(c){ if (!c.empty && tsunamiSnapshot[c.id] !== undefined) c.tsunami = tsunamiSnapshot[c.id]; });
     saveCards();
     renderLedger();
-    render();
+    if (typeof currentView === "undefined" || currentView !== "ledger") render();
+    else if (typeof updatePlannerLaunch === "function") updatePlannerLaunch();
   }
 }
-
-function applyAutoTsunami() {
   var active = cards.filter(function(c){ return !c.empty && (c.balance||0) > 0; });
   var prevTotalMonthly = 0;
   active.forEach(function(c, i) {
@@ -5189,10 +5216,9 @@ function applyAutoTsunami() {
   });
   saveCards();
   renderLedger();
-  render();
+  if (typeof currentView === "undefined" || currentView !== "ledger") render();
+  else if (typeof updatePlannerLaunch === "function") updatePlannerLaunch();
 }
-
-function moveLedgerCard(id, dir) {
   var active = cards.filter(function(c){ return !c.empty; });
   var empty = cards.filter(function(c){ return c.empty; });
   var idx = active.findIndex(function(c){ return c.id == id; });
@@ -5286,7 +5312,7 @@ function renderLedger() {
       '<td><input class="ledger-input" readonly style="color:#33cc66;font-weight:700;cursor:default;" value="'+(c.limit>0?fmt((c.limit||0)-(c.balance||0)):'—')+'"></td>' +
       '<td><input class="ledger-input" type="number" value="'+(c.minPayment||"")+'" placeholder="0" data-id="'+c.id+'" data-field="minPayment" data-num="1"></td>' +
       '<td><input class="ledger-input" type="number" value="'+(c.interest||"")+'" placeholder="0" data-id="'+c.id+'" data-field="interest" data-num="1"></td>' +
-      '<td><input class="ledger-input" type="number" style="color:#fff;font-weight:700;" value="'+(c.tsunami||"")+'" placeholder="0" data-id="'+c.id+'" data-field="tsunami" data-num="1"></td>' +
+      '<td><input class="ledger-input ledger-tsunami" type="number" value="'+(c.tsunami||"")+'" placeholder="0" data-id="'+c.id+'" data-field="tsunami" data-num="1"></td>' +
       '<td class="ledger-tm">'+fmt(tm)+'</td>' +
       '<td><input class="ledger-input" type="date" value="'+(c.due||"")+'" data-id="'+c.id+'" data-field="due"></td>' +
       '<td><button class="ledger-del-btn" data-id="'+c.id+'">&#10005;</button></td>';
