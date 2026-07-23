@@ -4244,14 +4244,14 @@ function buildPlannerEl(cardId) {
     var saveBtn = document.createElement("button");
     saveBtn.type = "button";
     saveBtn.className = "slot-save-btn" + (slot.saved ? " saved" : "");
-    saveBtn.textContent = slot.saved ? "Forecasted" : "Forecast Payment";
+    saveBtn.textContent = "Forecast";
     saveBtn.title = slot.saved ? "Projected balance includes this amount" : "Preview this payment against projected balance";
     actions.appendChild(saveBtn);
 
     var checkBtn = document.createElement("button");
     checkBtn.type = "button";
     checkBtn.className = "slot-btn slot-btn-check"+(slot.committed?" done":"");
-    checkBtn.textContent = slot.committed ? "Paid" : "Made Payment";
+    checkBtn.textContent = "Paid";
     checkBtn.title = slot.committed ? "Payment already applied to balance" : "Mark paid — subtracts this amount from card balance";
     actions.appendChild(checkBtn);
 
