@@ -275,6 +275,13 @@ input.tright.dark-input[type="date"] { font-size:clamp(8px, 3.8cqh, 12px); }
 .planner-back-inline { background:rgba(0,136,255,0.2); border:1px solid rgba(100,200,255,0.45); color:#22ccff; font-family:'Bebas Neue',sans-serif; font-size:12px; letter-spacing:0.08em; padding:4px 10px; border-radius:6px; cursor:pointer; white-space:nowrap; flex-shrink:0; }
 .planner-back-inline:hover { background:rgba(0,136,255,0.35); }
 
+.planner-clear-bar { display:flex; flex-wrap:wrap; align-items:center; gap:6px; justify-content:flex-start; margin-top:2px; }
+.planner-clear-btn { background:rgba(204,17,17,0.12); border:1px solid rgba(204,17,17,0.4); color:#ff6666; font-family:'Bebas Neue',sans-serif; font-size:12px; letter-spacing:0.08em; padding:5px 10px; border-radius:6px; cursor:pointer; }
+.planner-clear-btn:hover { background:rgba(204,17,17,0.22); }
+.planner-clear-confirm { display:none; flex:1 1 100%; align-items:center; gap:6px; flex-wrap:wrap; font-size:11px; color:#ff8888; }
+.planner-clear-confirm.show { display:flex; }
+.planner-clear-confirm button { font-family:'Bebas Neue',sans-serif; font-size:12px; padding:4px 10px; border-radius:5px; border:none; cursor:pointer; }
+
 @media (max-width:520px) {
   .slot-row { grid-template-columns:24px 1fr 1fr; }
   .slot-row .slot-ref { grid-column:2 / -1; }
@@ -4161,6 +4168,33 @@ function calcProjected(cardId) {
   return bal;
 }
 
+function restoreCommittedPlannerSlots(slots, card) {
+  if (!card || !slots) return;
+  slots.forEach(function(s) {
+    if (s && s.committed) {
+      card.balance = Math.round((card.balance + (parseFloat(s.charged) || 0)) * 100) / 100;
+    }
+  });
+}
+
+function clearPlannerPage(cardId) {
+  var card = cards.find(function(c){ return c.id === cardId; });
+  var ps = getPS(cardId);
+  restoreCommittedPlannerSlots(ps.pages[ps.page], card);
+  ps.pages[ps.page] = [{}, {}, {}, {}];
+  if (card) { saveCards(); updateTotals(); }
+  showPlanner(cardId);
+}
+
+function clearPlannerAll(cardId) {
+  var card = cards.find(function(c){ return c.id === cardId; });
+  var ps = getPS(cardId);
+  ps.pages.forEach(function(page){ restoreCommittedPlannerSlots(page, card); });
+  plannerState[cardId] = { pages: [[{}, {}, {}, {}]], page: 0 };
+  if (card) { saveCards(); updateTotals(); }
+  showPlanner(cardId);
+}
+
 // Show planner above the grid — never replace a card slot (that hid neighbor cards).
 function showPlanner(cardId) {
   var panel = document.getElementById("planner-panel");
@@ -4470,6 +4504,70 @@ function buildPlannerEl(cardId) {
   pager.appendChild(counter);
   pager.appendChild(nextWrap);
   wrap.appendChild(pager);
+
+  var clearBar = document.createElement("div");
+  clearBar.className = "planner-clear-bar";
+
+  var clearPageBtn = document.createElement("button");
+  clearPageBtn.type = "button";
+  clearPageBtn.className = "planner-clear-btn";
+  clearPageBtn.textContent = "CLEAR PAGE";
+  clearPageBtn.title = "Clear slots on this page";
+
+  var clearAllBtn = document.createElement("button");
+  clearAllBtn.type = "button";
+  clearAllBtn.className = "planner-clear-btn";
+  clearAllBtn.textContent = "CLEAR ALL";
+  clearAllBtn.title = "Clear every planner page for this card";
+
+  var clearConfirm = document.createElement("div");
+  clearConfirm.className = "planner-clear-confirm";
+  clearConfirm.setAttribute("data-mode", "");
+
+  function hideClearConfirm() {
+    clearConfirm.classList.remove("show");
+    clearConfirm.innerHTML = "";
+    clearConfirm.setAttribute("data-mode", "");
+    clearConfirm.setAttribute("data-step", "");
+  }
+
+  function runClearAction(mode) {
+    if (mode === "page") clearPlannerPage(cardId);
+    else if (mode === "all") clearPlannerAll(cardId);
+  }
+
+  function showClearConfirm(mode, step) {
+    clearConfirm.setAttribute("data-mode", mode);
+    clearConfirm.setAttribute("data-step", String(step));
+    clearConfirm.innerHTML = "";
+    var msg = document.createElement("span");
+    msg.textContent = step === 1 ? "Are you sure?" : "Are you sure that you're sure lol?";
+    var yes = document.createElement("button");
+    yes.type = "button";
+    yes.textContent = "YES";
+    yes.style.cssText = "background:#cc1111;color:#fff;";
+    var no = document.createElement("button");
+    no.type = "button";
+    no.textContent = "NO";
+    no.style.cssText = "background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);";
+    yes.addEventListener("click", function(){
+      if (step === 1) showClearConfirm(mode, 2);
+      else runClearAction(mode);
+    });
+    no.addEventListener("click", hideClearConfirm);
+    clearConfirm.appendChild(msg);
+    clearConfirm.appendChild(yes);
+    clearConfirm.appendChild(no);
+    clearConfirm.classList.add("show");
+  }
+
+  clearPageBtn.addEventListener("click", function(){ showClearConfirm("page", 1); });
+  clearAllBtn.addEventListener("click", function(){ showClearConfirm("all", 1); });
+
+  clearBar.appendChild(clearPageBtn);
+  clearBar.appendChild(clearAllBtn);
+  clearBar.appendChild(clearConfirm);
+  wrap.appendChild(clearBar);
 
   setTimeout(function(){
     var addBtn = document.getElementById("amadd-"+cardId);
