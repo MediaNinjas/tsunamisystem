@@ -303,13 +303,6 @@ input.tright.dark-input[type="date"] { font-size:clamp(8px, 3.8cqh, 12px); }
 
 /* ============= PROMO CLIFF WARNING SYSTEM ============= */
 .tsunami-card.promo-alert { border-color:#cc1111 !important; box-shadow:0 12px 40px rgba(0,0,0,0.5), 0 0 0 2px rgba(204,17,17,0.5), 0 0 24px rgba(204,17,17,0.25) !important; }
-/* Grow the card when promo is open so rows can breathe */
-.tsunami-card:has(.promo-overlay.show) {
-  aspect-ratio:auto;
-  height:auto;
-  min-height:300px;
-}
-
 .promo-toggle-row { padding:0 12px 10px; text-align:center; position:relative; z-index:2; }
 .promo-toggle { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); font-family:'DM Sans',sans-serif; font-size:10px; font-weight:700; letter-spacing:0.1em; padding:5px 10px; border-radius:6px; cursor:pointer; text-transform:uppercase; }
 .promo-toggle.on { background:rgba(204,17,17,0.25); border-color:rgba(204,17,17,0.5); color:#ff8866; }
@@ -321,48 +314,69 @@ input.tright.dark-input[type="date"] { font-size:clamp(8px, 3.8cqh, 12px); }
 .promo-field-input { display:flex; align-items:center; padding:3px 6px; font-size:clamp(8px,1.1vw,11px); color:#111; background:#fff; border-radius:5px; border:none; outline:none; font-family:'DM Sans',sans-serif; width:100%; }
 .promo-end-display { display:flex; align-items:center; justify-content:center; padding:3px 6px; font-size:clamp(8px,1.1vw,11px); color:rgba(255,255,255,0.6); background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); border-radius:5px; font-style:italic; }
 
-/* Promo overlay — card-table style rows, same field IDs/wiring */
+/* Promo overlay — same cell density/type as the card face (flipped card) */
 .promo-overlay {
   position:absolute; inset:0; z-index:40;
-  background:rgba(120,0,0,0.97); border-radius:20px;
-  padding:10px 12px 12px; box-sizing:border-box;
-  display:none; flex-direction:column; gap:6px;
-  overflow:auto;
+  background:linear-gradient(145deg,#5a1010 0%,#3a0505 45%,#1a0000 100%);
+  border-radius:20px; box-sizing:border-box;
+  display:none; flex-direction:column; overflow:hidden;
 }
 .promo-overlay.show { display:flex; }
+.po-header {
+  display:flex; align-items:stretch; gap:6px; flex-shrink:0;
+  margin:clamp(6px, 3.5cqh, 12px) clamp(8px, 2.5cqi, 12px) clamp(4px, 2cqh, 8px);
+  height:clamp(28px, 16cqh, 44px); min-height:0;
+}
+.po-title {
+  flex:1; min-width:0; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg,#cc1111,#aa0000); border-radius:7px;
+  font-family:'Bebas Neue',sans-serif; font-size:clamp(11px, 5cqh, 18px);
+  letter-spacing:0.15em; color:#fff; line-height:1;
+}
 .po-close {
-  width:26px; height:26px; border-radius:6px; border:1.5px solid rgba(255,255,255,0.55);
-  background:rgba(255,255,255,0.12); color:#fff; font-size:14px; font-weight:900;
-  cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  width:clamp(28px, 8cqi, 40px); height:100%; min-height:0; border-radius:7px;
+  border:2.5px solid rgba(255,255,255,0.55); background:rgba(255,255,255,0.1);
+  color:#fff; font-size:clamp(12px, 5cqh, 18px); font-weight:900;
+  cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0;
 }
-.po-header { display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
-.po-title { font-family:'Bebas Neue',sans-serif; font-size:15px; letter-spacing:0.1em; color:#fff; line-height:1; }
-.po-body { display:flex; flex-direction:column; gap:4px; flex:1; min-height:0; }
+.po-body {
+  margin:0 clamp(8px, 2.5cqi, 12px) clamp(4px, 2cqh, 10px);
+  display:flex; flex-direction:column; gap:clamp(1px, 0.6cqh, 2px);
+  flex:1; min-height:0; justify-content:space-between;
+}
 .po-row {
-  display:grid; grid-template-columns:1.15fr 1fr 1.15fr 1fr; gap:4px; align-items:stretch;
-  flex:1; min-height:30px;
+  display:grid; grid-template-columns:1.2fr 1fr 1.2fr 1fr; gap:2px;
+  min-height:0; flex:1; align-items:stretch;
 }
-.po-row.po-row-full { grid-template-columns:1.15fr 1fr 1.15fr 1fr; }
 .po-lab {
   display:flex; align-items:center; justify-content:flex-end;
-  padding:4px 8px; font-size:11px; font-weight:700; color:#111; background:#fff;
-  border-radius:5px; text-align:right; line-height:1.15;
+  padding:1px 6px 1px 2px; font-size:clamp(8px, 3.8cqh, 12px); font-weight:700;
+  color:#111; text-align:right; background:#fff; border-radius:5px; line-height:1.1; min-height:0;
 }
 .po-val, input.po-val {
   display:flex; align-items:center; justify-content:flex-start;
-  width:100%; box-sizing:border-box; min-width:0;
-  padding:4px 8px; font-size:12px; font-weight:600; font-family:'DM Sans',sans-serif;
-  color:#111; background:#fff; border:none; border-radius:5px; outline:none; line-height:1.15;
+  width:100%; box-sizing:border-box; min-width:0; overflow:hidden;
+  padding:1px 6px; font-size:clamp(8px, 3.8cqh, 12px); font-weight:500;
+  font-family:'DM Sans',sans-serif; color:#111; background:#fff;
+  border:none; border-radius:5px; outline:none; line-height:1.1; min-height:0;
 }
 input.po-val { -webkit-appearance:none; appearance:none; }
 input.po-val:focus { background:#fffde0; }
-.po-val.cyan { color:#0a6a8a; font-family:'Bebas Neue',sans-serif; font-size:14px; letter-spacing:0.04em; }
-.po-val.gap { color:#8a6000; background:#ffe9a8; }
-.po-val.orange { color:#a05000; }
-input.po-val.orange { color:#a05000; }
-.po-apr-wrap { display:flex; align-items:center; gap:4px; background:#fff; border-radius:5px; padding:0 8px; min-width:0; }
+.po-val.cyan { color:#0a6a8a; font-family:'Bebas Neue',sans-serif; font-weight:700; letter-spacing:0.04em; }
+.po-val.gap { color:#8a6000; background:#ffe9a8; font-weight:700; }
+.po-val.orange { color:#a05000; font-weight:700; }
+input.po-val.orange { color:#a05000; font-weight:700; }
+.po-apr-wrap {
+  display:flex; align-items:center; gap:2px; background:#fff; border-radius:5px;
+  padding:0 6px; min-width:0; min-height:0; overflow:hidden;
+}
 .po-apr-wrap input.po-val { flex:1; padding-left:0; padding-right:0; background:transparent; }
-.po-apr-wrap .po-apr-pct { color:#a05000; font-size:12px; font-weight:700; flex-shrink:0; }
+.po-apr-wrap .po-apr-pct {
+  color:#a05000; font-size:clamp(8px, 3.8cqh, 12px); font-weight:700; flex-shrink:0;
+}
+.planner-launch-btn.is-open {
+  background:linear-gradient(135deg,#444,#222); border-color:rgba(255,255,255,0.35);
+}
 
 /* LEDGER VIEW */
 #ledger-view { display:none; }
@@ -4217,6 +4231,8 @@ function clearPlannerAll(cardId) {
 }
 
 // Show planner above the grid — never replace a card slot (that hid neighbor cards).
+var plannerOpenCardId = null;
+
 function showPlanner(cardId) {
   var panel = document.getElementById("planner-panel");
   if (!panel) return;
@@ -4225,6 +4241,9 @@ function showPlanner(cardId) {
   panel.style.display = "block";
   panel.setAttribute("aria-hidden", "false");
   panel.dataset.cardId = String(cardId);
+  plannerOpenCardId = cardId;
+  var btn = document.getElementById("planner-launch-btn");
+  if (btn) btn.classList.add("is-open");
   try { panel.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch (e) {}
 }
 
@@ -4235,6 +4254,9 @@ function closePlanner() {
   panel.style.display = "none";
   panel.setAttribute("aria-hidden", "true");
   delete panel.dataset.cardId;
+  plannerOpenCardId = null;
+  var btn = document.getElementById("planner-launch-btn");
+  if (btn) btn.classList.remove("is-open");
 }
 
 function showCard(cardId) {
@@ -4797,6 +4819,7 @@ function updatePlannerLaunch() {
     wrap.classList.remove("show");
     wrap.setAttribute("aria-hidden", "true");
     btn.onclick = null;
+    btn.classList.remove("is-open");
     if (typeof closePlanner === "function") closePlanner();
     return;
   }
@@ -4805,15 +4828,24 @@ function updatePlannerLaunch() {
     wrap.classList.remove('show');
     wrap.setAttribute('aria-hidden', 'true');
     btn.onclick = null;
+    btn.classList.remove("is-open");
     return;
   }
   wrap.classList.add('show');
   wrap.setAttribute('aria-hidden', 'false');
-  btn.onclick = function(){
-    var panel = document.getElementById('planner-panel');
-    var open = panel && panel.style.display !== 'none' && panel.dataset.cardId === String(target.id);
-    if (open) closePlanner();
-    else showPlanner(target.id);
+  if (plannerOpenCardId != null && String(plannerOpenCardId) === String(target.id)) {
+    btn.classList.add("is-open");
+  } else {
+    btn.classList.remove("is-open");
+  }
+  btn.onclick = function(e){
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    // Toggle: same target already open → close; otherwise open/switch.
+    if (plannerOpenCardId != null && String(plannerOpenCardId) === String(target.id)) {
+      closePlanner();
+    } else {
+      showPlanner(target.id);
+    }
   };
 }
 

@@ -75,14 +75,19 @@ Price ID for Stripe product "Tsunami System Access": `price_1TrsHhL15F7ly2P4GPsh
 
 ## Deployment
 
-**Autonomy:** Commit and push `main` when work is done — do not wait for the user to say “deploy.” Netlify auto-deploys from GitHub `main`.
+**Autonomy:** Commit and push `main` when work is done — do not wait for the user to say “deploy.”
+
+**Important:** The Netlify site `tsunamisystem` is **not** linked to the GitHub repo for auto-deploy. Pushing `main` alone does **not** update production. Always also run a production deploy:
 
 ```bash
 cd "<repo root>"
 git add .
 git commit -m "message"
 git push origin main
+npx netlify deploy --prod --dir=. --message "short note"
 ```
+
+Live: `https://tsunamiapp.medianinjas.tv`
 
 Edge functions:
 
@@ -101,7 +106,7 @@ Local static test: `python -m http.server 8000` in repo root.
 - **Minimize scope** — small targeted diffs; do not refactor to React/Vite unless asked.
 - **Match style** — vanilla JS, inline CSS, Bebas Neue / DM Sans, existing naming.
 - **Do not commit secrets** — no keys in git; use Supabase/Netlify dashboards.
-- **Ship by default** — when a Tsunami fix is done, commit and push `main` (Netlify deploy). Do not wait for “please deploy.”
+- **Ship by default** — when a Tsunami fix is done, commit + push `main` **and** `npx netlify deploy --prod` (site is not GitHub-auto-deployed). Do not wait for “please deploy.”
 - Card `credentials` field stores passwords in `cards.card_data` JSON — intentional for user convenience; do not log or expose.
 
 ## Feature status (as of July 2026)

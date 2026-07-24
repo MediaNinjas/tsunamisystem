@@ -11,9 +11,10 @@ Owner wants hands-off ops. Do not ask for permission for routine ship steps.
 
 - Fix bugs and paywall/auth issues you find or are assigned.
 - **Commit** finished work with a clear message (no secrets).
-- **Push `main`** to `origin` (`MediaNinjas/tsunamisystem`) so Netlify auto-deploys.
-- Prefer completing the full loop (fix → verify mentally → commit → push) in one turn.
-- Report the live URL and what changed after push — do not ask “want me to push?”
+- **Push `main`** to `origin` (`MediaNinjas/tsunamisystem`).
+- **Also run `npx netlify deploy --prod --dir=.`** — the Netlify site is **not** GitHub-linked for auto-deploy; push alone does not update live.
+- Prefer completing the full loop (fix → verify → commit → push → Netlify prod) in one turn.
+- Report the live URL and what changed after deploy — do not ask “want me to push?”
 
 ## Still stop and ask (or skip)
 
@@ -24,4 +25,4 @@ Owner wants hands-off ops. Do not ask for permission for routine ship steps.
 
 ## Deploy truth
 
-Netlify publishes from GitHub `main`. Pushing `main` **is** the deploy.
+Netlify site `tsunamisystem` is **not** auto-deployed from GitHub. Pushing `main` updates the repo only. Live updates require `npx netlify deploy --prod --dir=.`.
