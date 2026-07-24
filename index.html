@@ -4674,11 +4674,11 @@ function buildCardEl(c, slotNum) {
       '<div class="po-input-grid">' +
         '<div class="po-ig-cell">' +
           '<div class="po-ig-label">MONTHS</div>' +
-          '<input class="po-ig-input" id="fld-pmonths-'+cid+'" type="number" inputmode="numeric" value="'+(c.promoMonths||'')+'" placeholder="0" oninput="setPromoMonths('+cid+',this.value)">' +
+          '<input class="po-ig-input" id="fld-pmonths-'+cid+'" type="number" inputmode="numeric" value="'+(c.promoMonths||'')+'" placeholder="0" oninput="setPromoMonths('+cid+',this.value)" onchange="setPromoMonths('+cid+',this.value)" onblur="setPromoMonths('+cid+',this.value)">' +
         '</div>' +
         '<div class="po-ig-cell">' +
           '<div class="po-ig-label">WARN MO</div>' +
-          '<input class="po-ig-input" id="fld-pwarn-'+cid+'" type="number" inputmode="numeric" value="'+(c.promoWarn||3)+'" placeholder="3" oninput="setPromoWarn('+cid+',this.value)">' +
+          '<input class="po-ig-input" id="fld-pwarn-'+cid+'" type="number" inputmode="numeric" value="'+(c.promoWarn||3)+'" placeholder="3" oninput="setPromoWarn('+cid+',this.value)" onchange="setPromoWarn('+cid+',this.value)" onblur="setPromoWarn('+cid+',this.value)">' +
         '</div>' +
         '<div class="po-ig-cell">' +
           '<div class="po-ig-label">END DATE</div>' +
@@ -4693,7 +4693,7 @@ function buildCardEl(c, slotNum) {
         '<div class="po-sg-cell"><div class="po-sg-label">REMAINING BAL</div><div class="po-sg-value" id="porb-'+cid+'">'+(c.balance?'$'+Math.round(c.balance):'--')+'</div></div>' +
         '<div class="po-sg-cell po-sg-wide">' +
           '<div class="po-apr-cluster">' +
-            '<div class="po-apr-inline"><div class="po-sg-label">APR %</div><div class="po-apr-inline-row"><input type="number" id="fld-papr-'+cid+'" value="'+((parseFloat(c.promoApr)>0?c.promoApr:30))+'" min="1" max="99" oninput="setPromoApr('+cid+',this.value)"><span class="po-apr-pct">%</span></div></div>' +
+            '<div class="po-apr-inline"><div class="po-sg-label">APR %</div><div class="po-apr-inline-row"><input type="number" id="fld-papr-'+cid+'" value="'+((parseFloat(c.promoApr)>0?c.promoApr:30))+'" min="1" max="99" oninput="setPromoApr('+cid+',this.value)" onchange="setPromoApr('+cid+',this.value)" onblur="setPromoApr('+cid+',this.value)"><span class="po-apr-pct">%</span></div></div>' +
             '<div class="po-interest-inline"><div class="po-sg-label">EST. INTEREST IF MISSED</div><div class="po-sg-value orange" id="poit-'+cid+'">'+(c.promoMonths?'$'+Math.round((c.balance||0)*(promoAprOf(c)/12/100)*c.promoMonths)+' est':'--')+'</div></div>' +
           '</div>' +
         '</div>' +
@@ -4984,11 +4984,14 @@ function togglePromo(cardId) {
 function setPromoMonths(cardId, val) {
   var c = cards.find(function(x){return x.id==cardId;});
   if (!c) return;
-  c.promoMonths = parseInt(val)||0;
+  var n = parseInt(val, 10);
+  c.promoMonths = (isNaN(n) || n < 0) ? 0 : n;
   c.promoEnd = calcPromoEnd(c.promoMonths);
   c.dismissed = false;
   var endEl = document.getElementById("pend-"+cardId);
   if (endEl) endEl.textContent = fmtMonthYear(c.promoEnd) || "--";
+  var monthsEl = document.getElementById("fld-pmonths-"+cardId);
+  if (monthsEl && monthsEl !== document.activeElement) monthsEl.value = c.promoMonths || "";
   saveCards();
   checkPromoWarning(cardId);
 }
@@ -5007,9 +5010,26 @@ function setPromoApr(cardId, val) {
 function setPromoWarn(cardId, val) {
   var c = cards.find(function(x){return x.id==cardId;});
   if (!c) return;
-  c.promoWarn = parseInt(val)||3;
+  var n = parseInt(val, 10);
+  // Allow 0; blank falls back to default 3
+  c.promoWarn = isNaN(n) ? 3 : Math.max(0, n);
+  var warnEl = document.getElementById("fld-pwarn-"+cardId);
+  if (warnEl && warnEl !== document.activeElement) warnEl.value = c.promoWarn;
   saveCards();
   checkPromoWarning(cardId);
+}
+
+function clearPromoStats(cardId, c) {
+  var mel = document.getElementById("pom-"+cardId);
+  var tel = document.getElementById("pot-"+cardId);
+  var gel = document.getElementById("pog-"+cardId);
+  var rbel = document.getElementById("porb-"+cardId);
+  var itEl = document.getElementById("poit-"+cardId);
+  if (mel) mel.textContent = "--";
+  if (tel) tel.textContent = "--";
+  if (gel) { gel.textContent = "--"; gel.className = "po-sg-value"; }
+  if (rbel) rbel.textContent = (c && c.balance) ? "$"+Math.round(c.balance) : "--";
+  if (itEl) itEl.textContent = "--";
 }
 
 function checkPromoWarning(cardId) {
@@ -5023,15 +5043,12 @@ function checkPromoWarning(cardId) {
   if (c.promoOn) ov.classList.add("show");
   else ov.classList.remove("show");
 
-  // If promo is fully disabled (no months entered), remove warnings and bail
+  // If promo months cleared/zeroed, wipe derived stats so stale SHORT/gap doesn't linger
   if (!c.promoMonths) {
     card.classList.remove("promo-alert");
     var wov2 = document.getElementById("pwov-"+cardId);
     if (wov2) wov2.classList.remove("active");
-    var itEmpty = document.getElementById("poit-"+cardId);
-    if (itEmpty) itEmpty.textContent = "--";
-    var rbEmpty = document.getElementById("porb-"+cardId);
-    if (rbEmpty) rbEmpty.textContent = c.balance ? "$"+Math.round(c.balance) : "--";
+    clearPromoStats(cardId, c);
     return;
   }
 
@@ -5058,7 +5075,7 @@ function checkPromoWarning(cardId) {
   } else {
     required = balance;
   }
-  var warnThreshold = c.promoWarn || 3;
+  var warnThreshold = (typeof c.promoWarn === "number") ? c.promoWarn : (parseInt(c.promoWarn, 10) || 3);
   var bad = m <= 0 || m <= warnThreshold;
 
   if (bad) {
