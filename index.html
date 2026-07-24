@@ -314,66 +314,48 @@ input.tright.dark-input[type="date"] { font-size:clamp(8px, 3.8cqh, 12px); }
 .promo-field-input { display:flex; align-items:center; padding:3px 6px; font-size:clamp(8px,1.1vw,11px); color:#111; background:#fff; border-radius:5px; border:none; outline:none; font-family:'DM Sans',sans-serif; width:100%; }
 .promo-end-display { display:flex; align-items:center; justify-content:center; padding:3px 6px; font-size:clamp(8px,1.1vw,11px); color:rgba(255,255,255,0.6); background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.07); border-radius:5px; font-style:italic; }
 
-/* Promo overlay — same cell density/type as the card face (flipped card) */
-.promo-overlay {
-  position:absolute; inset:0; z-index:40;
-  background:linear-gradient(145deg,#5a1010 0%,#3a0505 45%,#1a0000 100%);
-  border-radius:20px; box-sizing:border-box;
-  display:none; flex-direction:column; overflow:hidden;
-}
+/* Promo overlay — restored compact dark layout (APR + interest-if-missed kept) */
+.promo-overlay { position:absolute; inset:0; z-index:40; background:rgba(120,0,0,0.97); border-radius:20px; padding:8px 10px; display:none; flex-direction:column; gap:3px; overflow-y:auto; }
 .promo-overlay.show { display:flex; }
-.po-header {
-  display:flex; align-items:stretch; gap:6px; flex-shrink:0;
-  margin:clamp(6px, 3.5cqh, 12px) clamp(8px, 2.5cqi, 12px) clamp(4px, 2cqh, 8px);
-  height:clamp(28px, 16cqh, 44px); min-height:0;
+.po-close { width:28px; height:28px; border-radius:6px; border:1.5px solid rgba(255,255,255,0.5); background:rgba(255,255,255,0.1); color:#fff; font-size:14px; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.po-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:3px; }
+.po-title { font-family:'Bebas Neue',sans-serif; font-size:14px; letter-spacing:0.1em; color:#fff; }
+.po-section-label { display:none; }
+.po-stat-value.gap { color:#ffdd44; }
+.po-input-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:3px; margin-bottom:2px; }
+.po-ig-cell { display:flex; flex-direction:column; gap:1px; text-align:center; min-width:0; }
+.po-ig-label { font-size:6px; color:rgba(255,255,255,0.5); letter-spacing:0.04em; text-transform:uppercase; }
+.po-ig-input { width:100%; box-sizing:border-box; background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; font-family:'DM Sans',sans-serif; font-size:11px; padding:2px 3px; text-align:center; outline:none; }
+.po-ig-input:focus { border-color:rgba(100,200,255,0.6); }
+.po-ig-value { background:rgba(255,255,255,0.08); border-radius:4px; padding:2px 3px; font-family:'Bebas Neue',sans-serif; font-size:10px; color:#22ccff; text-align:center; }
+.po-stat-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px; }
+.po-sg-cell { background:rgba(255,255,255,0.08); border-radius:4px; padding:2px 4px; min-width:0; }
+.po-sg-cell.po-sg-wide { grid-column:1/-1; display:flex; align-items:flex-end; justify-content:flex-start; gap:10px; flex-wrap:wrap; }
+.po-sg-cell.po-sg-wide .po-sg-value { margin-top:0; }
+.po-apr-cluster { display:flex; align-items:flex-end; gap:8px; min-width:0; }
+.po-sg-label { font-size:6px; color:rgba(255,255,255,0.5); letter-spacing:0.04em; text-transform:uppercase; }
+.po-sg-value { font-family:'Bebas Neue',sans-serif; font-size:11px; color:#fff; margin-top:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.po-sg-value.gap { color:#ffdd44; }
+.po-sg-value.orange { color:#ffaa33; }
+.po-input-field:focus { border-color:rgba(100,200,255,0.6); }
+.po-divider { height:1px; background:rgba(255,255,255,0.12); margin:2px 0; }
+.po-apr-inline { display:flex; flex-direction:column; gap:1px; flex-shrink:0; }
+.po-apr-inline-row { display:flex; align-items:center; gap:2px; }
+.po-apr-inline input {
+  width:34px; background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.3); border-radius:4px;
+  color:#ffaa33; font-size:11px; text-align:center; outline:none; padding:1px 2px;
+  -moz-appearance:textfield; appearance:textfield;
 }
-.po-title {
-  flex:1; min-width:0; display:flex; align-items:center; justify-content:center;
-  background:linear-gradient(135deg,#cc1111,#aa0000); border-radius:7px;
-  font-family:'Bebas Neue',sans-serif; font-size:clamp(11px, 5cqh, 18px);
-  letter-spacing:0.15em; color:#fff; line-height:1;
-}
-.po-close {
-  width:clamp(28px, 8cqi, 40px); height:100%; min-height:0; border-radius:7px;
-  border:2.5px solid rgba(255,255,255,0.55); background:rgba(255,255,255,0.1);
-  color:#fff; font-size:clamp(12px, 5cqh, 18px); font-weight:900;
-  cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0;
-}
-.po-body {
-  margin:0 clamp(8px, 2.5cqi, 12px) clamp(4px, 2cqh, 10px);
-  display:flex; flex-direction:column; gap:clamp(1px, 0.6cqh, 2px);
-  flex:1; min-height:0; justify-content:space-between;
-}
-.po-row {
-  display:grid; grid-template-columns:1.2fr 1fr 1.2fr 1fr; gap:2px;
-  min-height:0; flex:1; align-items:stretch;
-}
-.po-lab {
-  display:flex; align-items:center; justify-content:flex-end;
-  padding:1px 6px 1px 2px; font-size:clamp(8px, 3.8cqh, 12px); font-weight:700;
-  color:#111; text-align:right; background:#fff; border-radius:5px; line-height:1.1; min-height:0;
-}
-.po-val, input.po-val {
-  display:flex; align-items:center; justify-content:flex-start;
-  width:100%; box-sizing:border-box; min-width:0; overflow:hidden;
-  padding:1px 6px; font-size:clamp(8px, 3.8cqh, 12px); font-weight:500;
-  font-family:'DM Sans',sans-serif; color:#111; background:#fff;
-  border:none; border-radius:5px; outline:none; line-height:1.1; min-height:0;
-}
-input.po-val { -webkit-appearance:none; appearance:none; }
-input.po-val:focus { background:#fffde0; }
-.po-val.cyan { color:#0a6a8a; font-family:'Bebas Neue',sans-serif; font-weight:700; letter-spacing:0.04em; }
-.po-val.gap { color:#8a6000; background:#ffe9a8; font-weight:700; }
-.po-val.orange { color:#a05000; font-weight:700; }
-input.po-val.orange { color:#a05000; font-weight:700; }
-.po-apr-wrap {
-  display:flex; align-items:center; gap:2px; background:#fff; border-radius:5px;
-  padding:0 6px; min-width:0; min-height:0; overflow:hidden;
-}
-.po-apr-wrap input.po-val { flex:1; padding-left:0; padding-right:0; background:transparent; }
-.po-apr-wrap .po-apr-pct {
-  color:#a05000; font-size:clamp(8px, 3.8cqh, 12px); font-weight:700; flex-shrink:0;
-}
+.po-apr-inline input::-webkit-outer-spin-button,
+.po-apr-inline input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+.po-apr-inline .po-apr-pct { color:#ffaa33; font-size:9px; }
+.po-interest-inline { display:flex; flex-direction:column; gap:1px; }
+
+/* Hide number-input spinner arrows on card view (values come from ledger) */
+.tsunami-card input[type=number]::-webkit-outer-spin-button,
+.tsunami-card input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+.tsunami-card input[type=number] { -moz-appearance:textfield; appearance:textfield; }
+
 .planner-launch-btn.is-open {
   background:linear-gradient(135deg,#444,#222); border-color:rgba(255,255,255,0.35);
 }
@@ -4689,34 +4671,31 @@ function buildCardEl(c, slotNum) {
         '<div class="po-title">&#9201; PROMO TERMS</div>' +
         '<button class="po-close" type="button" onclick="dismissPromo('+cid+')">&#10005;</button>' +
       '</div>' +
-      '<div class="po-body">' +
-        '<div class="po-row">' +
-          '<div class="po-lab">Months</div>' +
-          '<input class="po-val" id="fld-pmonths-'+cid+'" type="number" inputmode="numeric" value="'+(c.promoMonths||'')+'" placeholder="0" oninput="setPromoMonths('+cid+',this.value)">' +
-          '<div class="po-lab">Warn Mo</div>' +
-          '<input class="po-val" id="fld-pwarn-'+cid+'" type="number" inputmode="numeric" value="'+(c.promoWarn||3)+'" placeholder="3" oninput="setPromoWarn('+cid+',this.value)">' +
+      '<div class="po-input-grid">' +
+        '<div class="po-ig-cell">' +
+          '<div class="po-ig-label">MONTHS</div>' +
+          '<input class="po-ig-input" id="fld-pmonths-'+cid+'" type="number" inputmode="numeric" value="'+(c.promoMonths||'')+'" placeholder="0" oninput="setPromoMonths('+cid+',this.value)">' +
         '</div>' +
-        '<div class="po-row">' +
-          '<div class="po-lab">End Date</div>' +
-          '<div class="po-val cyan" id="pend-'+cid+'">'+(c.promoEnd?fmtMonthYear(c.promoEnd):'--')+'</div>' +
-          '<div class="po-lab">Mo Left</div>' +
-          '<div class="po-val" id="pom-'+cid+'">--</div>' +
+        '<div class="po-ig-cell">' +
+          '<div class="po-ig-label">WARN MO</div>' +
+          '<input class="po-ig-input" id="fld-pwarn-'+cid+'" type="number" inputmode="numeric" value="'+(c.promoWarn||3)+'" placeholder="3" oninput="setPromoWarn('+cid+',this.value)">' +
         '</div>' +
-        '<div class="po-row">' +
-          '<div class="po-lab">Your / Mo</div>' +
-          '<div class="po-val" id="pot-'+cid+'">--</div>' +
-          '<div class="po-lab">Gap</div>' +
-          '<div class="po-val" id="pog-'+cid+'">--</div>' +
+        '<div class="po-ig-cell">' +
+          '<div class="po-ig-label">END DATE</div>' +
+          '<div class="po-ig-value" id="pend-'+cid+'">'+(c.promoEnd?fmtMonthYear(c.promoEnd):'--')+'</div>' +
         '</div>' +
-        '<div class="po-row">' +
-          '<div class="po-lab">Remaining Bal</div>' +
-          '<div class="po-val" id="porb-'+cid+'">'+(c.balance?'$'+Math.round(c.balance):'--')+'</div>' +
-          '<div class="po-lab">APR %</div>' +
-          '<div class="po-apr-wrap"><input class="po-val orange" type="number" id="fld-papr-'+cid+'" value="'+((parseFloat(c.promoApr)>0?c.promoApr:30))+'" min="1" max="99" oninput="setPromoApr('+cid+',this.value)"><span class="po-apr-pct">%</span></div>' +
-        '</div>' +
-        '<div class="po-row">' +
-          '<div class="po-lab">Est. Interest If Missed</div>' +
-          '<div class="po-val orange" id="poit-'+cid+'" style="grid-column:2 / -1;">'+(c.promoMonths?'$'+Math.round((c.balance||0)*(promoAprOf(c)/12/100)*c.promoMonths)+' est':'--')+'</div>' +
+      '</div>' +
+      '<div class="po-divider"></div>' +
+      '<div class="po-stat-grid">' +
+        '<div class="po-sg-cell"><div class="po-sg-label">MO LEFT</div><div class="po-sg-value" id="pom-'+cid+'">--</div></div>' +
+        '<div class="po-sg-cell"><div class="po-sg-label">YOUR/MO</div><div class="po-sg-value" id="pot-'+cid+'">--</div></div>' +
+        '<div class="po-sg-cell"><div class="po-sg-label">GAP</div><div class="po-sg-value" id="pog-'+cid+'">--</div></div>' +
+        '<div class="po-sg-cell"><div class="po-sg-label">REMAINING BAL</div><div class="po-sg-value" id="porb-'+cid+'">'+(c.balance?'$'+Math.round(c.balance):'--')+'</div></div>' +
+        '<div class="po-sg-cell po-sg-wide">' +
+          '<div class="po-apr-cluster">' +
+            '<div class="po-apr-inline"><div class="po-sg-label">APR %</div><div class="po-apr-inline-row"><input type="number" id="fld-papr-'+cid+'" value="'+((parseFloat(c.promoApr)>0?c.promoApr:30))+'" min="1" max="99" oninput="setPromoApr('+cid+',this.value)"><span class="po-apr-pct">%</span></div></div>' +
+            '<div class="po-interest-inline"><div class="po-sg-label">EST. INTEREST IF MISSED</div><div class="po-sg-value orange" id="poit-'+cid+'">'+(c.promoMonths?'$'+Math.round((c.balance||0)*(promoAprOf(c)/12/100)*c.promoMonths)+' est':'--')+'</div></div>' +
+          '</div>' +
         '</div>' +
       '</div>' +
     '</div></div>';
@@ -5102,7 +5081,7 @@ function checkPromoWarning(cardId) {
   if (gel) {
     var gap = required - totalMonthly;
     gel.textContent = gap > 0 ? "+$"+Math.ceil(gap)+" SHORT" : "ON TRACK";
-    gel.className = "po-val"+(gap > 0 ? " gap" : "");
+    gel.className = "po-sg-value"+(gap > 0 ? " gap" : "");
   }
   if (rbel) rbel.textContent = balance ? "$"+Math.round(balance) : "--";
   if (itEl) {
