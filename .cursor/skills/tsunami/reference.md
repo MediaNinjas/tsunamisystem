@@ -39,7 +39,11 @@ Admin generates unused codes (`used: false`). Stripe webhook inserts with `used:
 
 **Card object fields** (in `card_data` JSON): `id`, `name`, `balance`, `limit`, `minPayment`, `interest`, `tsunami`, `credentials`, `due`, `promoOn`, `promoMonths`, `promoApr`, `promoWarn`, `promoEnd`, `dismissed`, `paid`, `empty`.
 
-**Not stored:** `plannerState` (payment planner pages/slots) — in-memory only.
+**Cloud `card_data` shapes:**
+- Legacy: bare array of card objects
+- v2: `{ v: 2, cards: [...], planner: { [cardId]: { pages, page } } }` — planner slots sync with cards
+
+Also cached in localStorage as `tsunami_planner_v1_<userId>`.
 
 ## RLS expectations (verify in Dashboard)
 

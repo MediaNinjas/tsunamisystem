@@ -3748,6 +3748,7 @@ async function routeAfterSignIn(user) {
 
 async function pollUnlockAfterStripe(user) {
   // Prefer opening the app ASAP — avoid sitting on the paywall after a paid session.
+  if (user) currentUser = user;
   if (await checkUnlocked(user)) {
     await launchApp({ forceCards: true });
     return;
@@ -3757,6 +3758,7 @@ async function pollUnlockAfterStripe(user) {
   var tries = 0;
   var poll = setInterval(async function() {
     tries++;
+    if (user) currentUser = user;
     if (await checkUnlocked(user)) {
       clearInterval(poll);
       await launchApp({ forceCards: true });
@@ -3913,6 +3915,44 @@ function cardsStorageKey() {
   return (currentUser && currentUser.id) ? ('tsunami_v1_' + currentUser.id) : 'tsunami_v1';
 }
 
+function plannerStorageKey() {
+  return (currentUser && currentUser.id) ? ('tsunami_planner_v1_' + currentUser.id) : 'tsunami_planner_v1';
+}
+
+function savePlannerState(opts) {
+  opts = opts || {};
+  try { localStorage.setItem(plannerStorageKey(), JSON.stringify(plannerState || {})); } catch (e) {}
+  if (opts.skipCloud || !currentUser) return;
+  if (window._plannerCloudTimer) clearTimeout(window._plannerCloudTimer);
+  window._plannerCloudTimer = setTimeout(function() {
+    window._plannerCloudTimer = null;
+    saveCardsToCloud();
+  }, 800);
+}
+
+function loadPlannerState() {
+  try {
+    var raw = localStorage.getItem(plannerStorageKey());
+    if (!raw) return {};
+    var parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function normalizeCloudCardPayload(raw) {
+  // Legacy: card_data was a bare cards array. v2: { v:2, cards, planner }.
+  if (Array.isArray(raw)) return { cards: raw, planner: null };
+  if (raw && typeof raw === 'object' && Array.isArray(raw.cards)) {
+    return {
+      cards: raw.cards,
+      planner: (raw.planner && typeof raw.planner === 'object' && !Array.isArray(raw.planner)) ? raw.planner : null
+    };
+  }
+  return { cards: null, planner: null };
+}
+
 function makeBlankCards() {
   var defaults = [];
   for (var i = 1; i <= 8; i++) {
@@ -3930,10 +3970,19 @@ async function loadCardsFromCloud() {
   if (!currentUser) return;
   try {
     var { data } = await _supabase.from('cards').select('card_data').eq('user_id', currentUser.id).single();
-    if (data && data.card_data && data.card_data.length) {
-      cards = await decryptCardsInMemory(data.card_data);
-      try { localStorage.setItem(cardsStorageKey(), JSON.stringify(cards)); } catch (e) {}
-      return;
+    if (data && data.card_data) {
+      var payload = normalizeCloudCardPayload(data.card_data);
+      if (payload.cards && payload.cards.length) {
+        cards = await decryptCardsInMemory(payload.cards);
+        if (payload.planner) {
+          plannerState = payload.planner;
+          savePlannerState();
+        } else {
+          plannerState = loadPlannerState();
+        }
+        try { localStorage.setItem(cardsStorageKey(), JSON.stringify(cards)); } catch (e) {}
+        return;
+      }
     }
   } catch (e) {}
   // Prefer this user's local cache only (never another account's shared key)
@@ -3943,6 +3992,7 @@ async function loadCardsFromCloud() {
       var parsed = JSON.parse(saved);
       if (parsed && parsed.length) {
         cards = parsed;
+        plannerState = loadPlannerState();
         await saveCardsToCloud();
         return;
       }
@@ -3950,6 +4000,8 @@ async function loadCardsFromCloud() {
   } catch (e) {}
   // Brand-new account: zeroed starter deck + one-time blank CSV download
   cards = makeBlankCards();
+  plannerState = {};
+  savePlannerState();
   await saveCardsToCloud();
   offerBlankStarterCsvOnce();
 }
@@ -3970,9 +4022,10 @@ async function saveCardsToCloud() {
   if (!currentUser) return;
   try {
     var encryptedCards = await encryptCardsForStorage(cards);
+    var payload = { v: 2, cards: encryptedCards, planner: plannerState || {} };
     var { data: updated, error: updateError } = await _supabase
       .from('cards')
-      .update({ card_data: encryptedCards, updated_at: new Date().toISOString() })
+      .update({ card_data: payload, updated_at: new Date().toISOString() })
       .eq('user_id', currentUser.id)
       .select();
     if (updateError) console.error('Tsunami cloud save failed (update):', updateError);
@@ -3980,7 +4033,7 @@ async function saveCardsToCloud() {
       // No row existed to update - create one instead
       var { error: insertError } = await _supabase
         .from('cards')
-        .insert({ user_id: currentUser.id, card_data: encryptedCards });
+        .insert({ user_id: currentUser.id, card_data: payload });
       if (insertError) console.error('Tsunami cloud save failed (insert):', insertError);
     }
   } catch(e) {
@@ -3989,6 +4042,7 @@ async function saveCardsToCloud() {
   // Plaintext cards stay in memory/localStorage on this device — only the
   // cloud copy is encrypted.
   try { localStorage.setItem(cardsStorageKey(), JSON.stringify(cards)); } catch(e) {}
+  savePlannerState({ skipCloud: true });
 }
 
 // Boot: Sign In / Sign Up is the first thing everyone sees.
@@ -4053,7 +4107,17 @@ window.addEventListener('load', async function() {
     }
   }
   // Regular session check (also handles Stripe return after session is available)
-  const { data: { session } } = await _supabase.auth.getSession();
+  var sessionBundle = await _supabase.auth.getSession();
+  var session = sessionBundle && sessionBundle.data && sessionBundle.data.session;
+  // Stripe return can land a beat before the session cookie is readable — retry briefly.
+  if (stripeReturn && !(session && session.user)) {
+    for (var stripeWait = 0; stripeWait < 6; stripeWait++) {
+      await new Promise(function(r){ setTimeout(r, 400); });
+      sessionBundle = await _supabase.auth.getSession();
+      session = sessionBundle && sessionBundle.data && sessionBundle.data.session;
+      if (session && session.user) break;
+    }
+  }
   if (session && session.user) {
     cacheDriveTokenFromSession(session, { explicit: connectDriveReturn });
     if (connectDriveReturn) {
@@ -4119,6 +4183,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function saveCards() {
   try { localStorage.setItem(cardsStorageKey(), JSON.stringify(cards)); } catch(e) {}
+  savePlannerState({ skipCloud: true });
   saveCardsToCloud();
 }
 
@@ -4135,7 +4200,7 @@ function loadCards() {
 
 var cards = loadCards();
 
-var plannerState = {};
+var plannerState = loadPlannerState();
 
 function getPS(id) {
   if (!plannerState[id]) plannerState[id] = {pages:[[{},{},{},{}],[{},{},{},{}]],page:0};
@@ -4226,6 +4291,7 @@ function showPlanner(cardId) {
   plannerOpenCardId = cardId;
   var btn = document.getElementById("planner-launch-btn");
   if (btn) btn.classList.add("is-open");
+  savePlannerState();
   try { panel.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch (e) {}
 }
 

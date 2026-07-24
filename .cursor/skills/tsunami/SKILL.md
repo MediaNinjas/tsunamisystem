@@ -48,17 +48,14 @@ description: >-
 | PayPal | Client `onApprove` inserts used code + unlocks profile (RLS-dependent) |
 | Stripe | `create-checkout` → Stripe → `stripe-webhook` sets unlock server-side |
 
-**Stripe return:** `?stripe_success=1` should load session first, then poll `checkUnlocked` (webhook may lag). Current bug: poll can run before `currentUser` is set.
+**Stripe return:** `?stripe_success=1` waits briefly for session if needed, sets `currentUser`, then polls `checkUnlocked` until webhook unlocks.
 
 ## Known structural bugs (fix with minimal diffs)
 
-1. **`#app-content` DOM split** — Only header/settings modals are inside `#app-content`. Sort bar, summary, `#grid`, and `#ledger-view` are **siblings outside** it. `launchApp()` only toggles `#app-content`, so main UI is not properly gated. **Fix:** move sort/summary/grid/ledger inside `#app-content`.
-
-2. **`plannerState` not persisted** — Payment planner slots live in memory only. `saveCards()` persists `cards` array, not `plannerState`. Committed payments update balance (saved); slot refs/dates/commits are lost on refresh.
-
-3. **OAuth / Stripe URLs** — primary `https://tsunamiapp.medianinjas.tv` (also allow Netlify alias). Never bare `medianinjas.tv` (unrelated AV site).
-
-4. **EmailJS dead code** — `emailjs` initialized in `<head>`; CSV backup uses `/.netlify/functions/send-backup` instead.
+1. ~~`#app-content` DOM split~~ — **Fixed:** sort/summary/grid/ledger live inside `#app-content`.
+2. ~~`plannerState` not persisted~~ — **Fixed:** localStorage + cloud `card_data` v2 `{ cards, planner }`.
+3. **OAuth / Stripe URLs** — primary `https://tsunamiapp.medianinjas.tv` (also allow Netlify alias). Never bare `medianinjas.tv`.
+4. ~~EmailJS dead code~~ — **Removed** (CSV backup uses Netlify `send-backup`).
 
 ## Secrets & placeholders (never commit values)
 
@@ -67,8 +64,9 @@ description: >-
 | Supabase publishable key | `index.html` `_supabase.createClient(...)` | Set |
 | `STRIPE_SECRET_KEY`, `TSUNAMI_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`, `SITE_URL` | Supabase secrets | Configured (see reference.md) |
 | `SUPABASE_SERVICE_ROLE_KEY` | stripe-webhook only | Must match env var name in code |
-| `YOUR_PAYPAL_CLIENT_ID` | `index.html` script tag | **Placeholder** |
-| `GOOGLE_DRIVE_CLIENT_ID`, `DROPBOX_APP_KEY` | `index.html` JS vars | **Placeholders** |
+| `TSUNAMI_PAYPAL_CLIENT_ID` | `index.html` | Set (Live client id) |
+| `GOOGLE_DRIVE_CLIENT_ID` | `index.html` | Set |
+| `DROPBOX_APP_KEY` | `index.html` | Set |
 | `RESEND_API_KEY` | Netlify env | Required for email backup |
 
 Price ID for Stripe product "Tsunami System Access": `price_1TrsHhL15F7ly2P4GPshKTkL` ($20 one-time).
@@ -116,9 +114,10 @@ Local static test: `python -m http.server 8000` in repo root.
 | Card grid, ledger, promo warnings, planner UI | Built |
 | Settings modal (billing display, backups UI, delete flow) | Built (partial delete — no auth.users removal) |
 | Supabase cloud card sync | Built |
-| Stripe checkout + webhook | Backend deployed; frontend wired; redirect/SITE_URL needs verification |
-| PayPal | Not configured (placeholder client id) |
-| Google Drive / Dropbox backup | UI only (placeholder OAuth keys) |
+| Stripe checkout + webhook | Built — success return polls unlock after session |
+| PayPal | Configured (Live client id in `index.html`) |
+| Google Drive / Dropbox backup | Configured (client id / app key in `index.html`) |
+| Payment planner persistence | Built — localStorage + cloud `card_data` v2 |
 | CSV email backup | Needs `RESEND_API_KEY` on Netlify |
 | Early-adopter shared code (N uses) | Built — admin Generate 500-Use Code + multi-use redeem |
 
